@@ -4,213 +4,99 @@
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Menu — Dishify</title>
-  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
   <script type="module" src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js"></script>
-  
-  <!-- Firebase -->
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-database-compat.js"></script>
-
   <style>
-    :root {
-      --gold: #c9a96e; --gold-light: #e8d5a3; --dark: #0a0906; --dark2: #13110d;
-      --dark3: #1e1a14; --cream: #f5f0e8; --red: #e8401c; --text: #f0e8d8; --muted: #7a6a50;
-    }
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { 
-      background: var(--dark); 
-      color: var(--text); 
-      font-family: 'DM Sans', sans-serif; 
-    }
-
+    :root { --gold: #d4af37; --dark: #050505; --glass: rgba(255, 255, 255, 0.05); }
+    * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; }
+    body { background: var(--dark); color: #e0e0e0; }
     .top-bar {
-      display: flex; align-items: center; justify-content: space-between;
-      padding: 1rem 1.5rem; border-bottom: 1px solid #2a2218;
-      position: sticky; top: 0; background: rgba(10,9,6,0.97); backdrop-filter: blur(10px); z-index: 100;
+      display: flex; justify-content: space-between; align-items: center; padding: 15px 20px;
+      position: sticky; top: 0; background: rgba(5,5,5,0.8); backdrop-filter: blur(15px); z-index: 100;
+      border-bottom: 1px solid rgba(212,175,55,0.1);
     }
-    .back-btn { color: var(--muted); text-decoration: none; font-size: 0.85rem; display: flex; align-items: center; gap: 0.4rem; }
-    .logo { font-family: 'Playfair Display', serif; font-size: 1.3rem; color: var(--gold); letter-spacing: 1px; }
-    .cart-btn {
-      background: var(--gold); color: var(--dark); border: none; padding: 0.6rem 1.2rem;
-      border-radius: 8px; font-size: 0.9rem; font-weight: 600; cursor: pointer;
-      display: flex; align-items: center; gap: 0.5rem;
-    }
-    .cart-count { background: var(--red); color: white; border-radius: 50%; width: 20px; height: 20px; font-size: 0.75rem; display: flex; align-items: center; justify-content: center; }
-
-    .restaurant-hero {
-      padding: 3rem 1.5rem 2rem;
-      background: linear-gradient(180deg, #2a1f0a 0%, var(--dark) 100%);
-      text-align: center;
-    }
-    .restaurant-emoji { font-size: 4.5rem; margin-bottom: 0.8rem; }
-    .restaurant-name { font-family: 'Playfair Display', serif; font-size: 2.4rem; font-weight: 700; margin-bottom: 0.4rem; color: var(--gold); }
-    .restaurant-cuisine { font-size: 0.95rem; letter-spacing: 3px; text-transform: uppercase; color: var(--gold-light); }
-    .restaurant-desc { color: var(--muted); font-size: 1rem; max-width: 460px; margin: 15px auto 0; }
-
-    .category-tabs {
-      display: flex; gap: 0.6rem; padding: 1rem 1.5rem; overflow-x: auto;
-      border-bottom: 1px solid #2a2218; background: rgba(10,9,6,0.97); backdrop-filter: blur(10px);
-      position: sticky; top: 57px; z-index: 90;
-    }
-    .cat-tab {
-      white-space: nowrap; padding: 0.55rem 1.4rem; border-radius: 30px;
-      border: 1px solid #2a2218; background: transparent; color: var(--muted);
-      font-size: 0.9rem; cursor: pointer; transition: all 0.3s; font-weight: 500;
-    }
-    .cat-tab.active { 
-      background: var(--gold); 
-      color: var(--dark); 
-      border-color: var(--gold); 
-      box-shadow: 0 4px 15px rgba(201,169,110,0.3);
-    }
-
-    .menu-section { padding: 2rem 1.5rem; max-width: 900px; margin: 0 auto; }
-    .category-group { margin-bottom: 3rem; }
-    .category-title { 
-      font-family: 'Playfair Display', serif; 
-      font-size: 1.7rem; 
-      margin-bottom: 1.2rem; 
-      padding-bottom: 0.6rem; 
-      border-bottom: 1px solid #2a2218; 
-      color: var(--gold-light);
-    }
-
+    .logo { font-family: 'Playfair Display', serif; color: var(--gold); font-size: 1.2rem; }
+    .cart-btn { background: var(--gold); color: #000; border: none; padding: 8px 16px; border-radius: 20px; font-weight: 600; cursor: pointer; }
+    .hero { text-align: center; padding: 60px 20px; background: radial-gradient(circle at center, #1a1a1a, var(--dark)); }
+    .hero h1 { font-family: 'Playfair Display', serif; color: var(--gold); font-size: 2.5rem; margin: 10px 0; }
+    .hero p { color: #888; font-size: 0.9rem; text-transform: uppercase; letter-spacing: 2px; }
+    .menu-container { max-width: 800px; margin: 0 auto; padding: 20px; }
+    .category-title { font-family: 'Playfair Display', serif; color: #fff; font-size: 1.8rem; margin: 40px 0 20px; border-bottom: 1px solid #333; padding-bottom: 10px; }
     .menu-item {
-      display: flex; gap: 1.2rem; padding: 1.2rem; border-radius: 16px;
-      border: 1px solid #2a2218; background: var(--dark2); margin-bottom: 1rem;
-      cursor: pointer; transition: all 0.3s;
+      display: flex; gap: 20px; padding: 20px; background: var(--glass); border-radius: 16px;
+      margin-bottom: 15px; border: 1px solid rgba(255,255,255,0.05); cursor: pointer; transition: 0.3s;
     }
-    .menu-item:hover { 
-      border-color: var(--gold); 
-      transform: translateX(6px); 
-      box-shadow: 0 10px 25px rgba(0,0,0,0.4);
-    }
-    .item-img {
-      width: 90px; height: 90px; border-radius: 12px; background: var(--dark3);
-      flex-shrink: 0; display: flex; align-items: center; justify-content: center; 
-      font-size: 2.8rem; overflow: hidden;
-    }
-    .item-img img { width: 100%; height: 100%; object-fit: cover; }
-    .item-name { font-family: 'Playfair Display', serif; font-size: 1.15rem; margin-bottom: 0.3rem; }
-    .item-desc { font-size: 0.9rem; color: var(--muted); line-height: 1.5; margin-bottom: 0.6rem; }
-    .item-price { font-weight: 600; color: var(--gold); font-size: 1.1rem; }
-
-    .add-btn {
-      background: transparent; border: 2px solid var(--gold); color: var(--gold);
-      width: 36px; height: 36px; border-radius: 10px; font-size: 1.4rem;
-      cursor: pointer; display: flex; align-items: center; justify-content: center;
-    }
-
-    /* Modals */
-    .modal-overlay {
-      display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.9);
-      z-index: 200; align-items: flex-end;
-    }
-    .modal-overlay.open { display: flex; }
-    .modal {
-      background: var(--dark2); border-radius: 24px 24px 0 0;
-      width: 100%; max-width: 620px; max-height: 92vh; overflow-y: auto;
-    }
-
-    .ar-btn {
-      width: 100%; padding: 1rem; border-radius: 12px;
-      background: linear-gradient(135deg, #1a2040, #0d1530);
-      color: #8ab4ff; font-weight: 600; cursor: pointer; margin: 15px 0;
-      display: flex; align-items: center; justify-content: center; gap: 10px;
-    }
-
-    model-viewer {
-      width: 100%; height: 420px; background: #111;
-    }
-
-    .cart-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 250; }
-    .cart-overlay.open { display: block; }
-    .cart-drawer {
-      position: fixed; right: 0; top: 0; bottom: 0; width: 380px; background: var(--dark2);
-      transform: translateX(100%); transition: transform 0.4s; z-index: 260;
-    }
-    .cart-drawer.open { transform: translateX(0); }
+    .menu-item:hover { transform: translateX(10px); border-color: rgba(212,175,55,0.3); background: rgba(30,30,30,0.8); }
+    .item-img { font-size: 3rem; background: rgba(0,0,0,0.5); width: 80px; height: 80px; display: flex; align-items: center; justify-content: center; border-radius: 12px; }
+    .item-info { flex: 1; }
+    .item-name { font-family: 'Playfair Display', serif; font-size: 1.2rem; margin-bottom: 5px; color: #fff; }
+    .item-desc { color: #888; font-size: 0.85rem; line-height: 1.4; margin-bottom: 10px; }
+    .item-price { color: var(--gold); font-weight: 600; }
+    .add-btn { background: transparent; border: 1px solid var(--gold); color: var(--gold); width: 35px; height: 35px; border-radius: 50%; cursor: pointer; font-size: 1.2rem; transition: 0.3s; }
+    .add-btn:hover { background: var(--gold); color: #000; }
+    .modal-overlay, .cart-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); backdrop-filter: blur(5px); z-index: 200; align-items: center; justify-content: center; }
+    .modal-overlay.open, .cart-overlay.open { display: flex; }
+    .modal { background: #111; border: 1px solid rgba(212,175,55,0.2); border-radius: 24px; padding: 30px; max-width: 500px; width: 90%; position: relative; }
+    .close-btn { position: absolute; top: 15px; right: 20px; background: none; border: none; color: #888; font-size: 1.5rem; cursor: pointer; }
+    .cart-drawer { position: fixed; right: -400px; top: 0; bottom: 0; width: 400px; max-width: 100%; background: #111; transition: 0.4s; z-index: 210; display: flex; flex-direction: column; border-left: 1px solid rgba(212,175,55,0.2); }
+    .cart-drawer.open { right: 0; }
+    .cart-header, .cart-footer { padding: 20px; background: rgba(0,0,0,0.5); }
+    .cart-items { flex: 1; overflow-y: auto; padding: 20px; }
+    .btn-primary { width: 100%; padding: 15px; background: var(--gold); color: #000; border: none; border-radius: 12px; font-weight: 700; cursor: pointer; margin-top: 15px; }
   </style>
 </head>
 <body>
 
 <div class="top-bar">
-  <a class="back-btn" href="index.html">← All Restaurants</a>
+  <a href="index.html" style="color:#888; text-decoration:none;">← Back</a>
   <div class="logo">DISHIFY</div>
-  <button class="cart-btn" onclick="openCart()">
-    🛒 Cart <span class="cart-count" id="cart-count">0</span>
-  </button>
+  <button class="cart-btn" onclick="openCart()">🛒 <span id="cart-count">0</span></button>
 </div>
 
-<div class="restaurant-hero">
-  <div class="restaurant-emoji" id="r-emoji">🍽️</div>
-  <div class="restaurant-name" id="r-name">Loading...</div>
-  <div class="restaurant-cuisine" id="r-cuisine"></div>
-  <div class="restaurant-desc" id="r-desc"></div>
+<div class="hero">
+  <div style="font-size: 4rem;" id="r-emoji">🍽️</div>
+  <h1 id="r-name">Loading...</h1>
+  <p id="r-cuisine"></p>
 </div>
 
-<div class="category-tabs" id="category-tabs"></div>
-<div class="menu-section" id="menu-section"></div>
+<div class="menu-container" id="menu-section"></div>
 
-<!-- Item Detail Modal -->
 <div class="modal-overlay" id="item-modal">
   <div class="modal">
-    <div style="padding:2rem 1.8rem; position:relative;">
-      <button onclick="closeModal()" style="position:absolute;top:1.5rem;right:1.8rem;background:none;border:none;color:#888;font-size:1.8rem;cursor:pointer;">✕</button>
-      
-      <div class="modal-img" id="modal-img" style="height:220px;font-size:6rem;margin-bottom:1.5rem;"></div>
-      <div class="item-name" id="modal-name" style="font-size:1.8rem;margin-bottom:0.4rem;"></div>
-      <div id="modal-price" style="color:var(--gold);font-size:1.5rem;font-weight:600;margin-bottom:1rem;"></div>
-      <div id="modal-desc" style="color:var(--muted);line-height:1.7;"></div>
-
-      <button class="ar-btn" id="ar-btn" onclick="openAR()">
-        🥽 View Dish in AR on Your Table
-      </button>
-      <button onclick="addCurrentToCart()" style="width:100%;padding:1rem;background:var(--gold);color:#000;border:none;border-radius:12px;font-weight:600;font-size:1.1rem;">
-        Add to Order
-      </button>
-    </div>
+    <button class="close-btn" onclick="closeModal()">✕</button>
+    <div id="modal-img" style="font-size: 5rem; text-align: center; margin-bottom: 20px;"></div>
+    <h2 id="modal-name" style="font-family:'Playfair Display', serif; color:var(--gold); margin-bottom: 10px;"></h2>
+    <p id="modal-desc" style="color: #aaa; margin-bottom: 20px; line-height: 1.5;"></p>
+    <h3 id="modal-price" style="margin-bottom: 20px;"></h3>
+    <button id="ar-btn" class="btn-primary" style="background:#1a2040; color:#8ab4ff; display:none; margin-bottom:10px;" onclick="openAR()">🥽 View in AR</button>
+    <button class="btn-primary" onclick="addCurrentToCart()">Add to Order</button>
   </div>
 </div>
 
-<!-- AR Viewer -->
-<div class="modal-overlay" id="ar-overlay" style="align-items:center;justify-content:center;">
-  <div style="width:100%;max-width:700px;background:#000;border-radius:20px;overflow:hidden;position:relative;">
-    <button onclick="closeAR()" style="position:absolute;top:15px;left:15px;z-index:10;background:rgba(0,0,0,0.6);color:white;padding:8px 16px;border-radius:8px;border:none;">← Back</button>
-    
-    <model-viewer id="ar-viewer"
-                  alt="AR Dish"
-                  auto-rotate
-                  camera-controls
-                  shadow-intensity="0.6"
-                  ar
-                  ar-modes="webxr scene-viewer quick-look"
-                  style="width:100%;height:520px;">
-    </model-viewer>
+<div class="modal-overlay" id="ar-overlay">
+  <div class="modal" style="padding:0; overflow:hidden;">
+    <button class="close-btn" onclick="closeAR()" style="z-index:10; background:rgba(0,0,0,0.5); border-radius:50%; width:40px; height:40px; color:white;">✕</button>
+    <model-viewer id="ar-viewer" auto-rotate camera-controls shadow-intensity="1" ar style="width:100%; height:400px; background:#000;"></model-viewer>
   </div>
 </div>
 
-<!-- Cart Drawer -->
-<div class="cart-overlay" id="cart-overlay" onclick="if(event.target===this)closeCart()"></div>
+<div class="cart-overlay" id="cart-overlay" onclick="closeCart()"></div>
 <div class="cart-drawer" id="cart-drawer">
-  <div style="padding:1.5rem;border-bottom:1px solid #2a2218;display:flex;justify-content:space-between;align-items:center;">
-    <h3 style="font-family:'Playfair Display',serif;">Your Order</h3>
-    <button onclick="closeCart()" style="background:none;border:none;color:#888;font-size:1.6rem;">✕</button>
+  <div class="cart-header">
+    <h2 style="font-family:'Playfair Display', serif; color:var(--gold); display:flex; justify-content:space-between;">Your Order <span onclick="closeCart()" style="cursor:pointer; color:#888;">✕</span></h2>
   </div>
-  <div id="cart-items" style="padding:1.5rem;flex:1;overflow:auto;"></div>
-  <div style="padding:1.5rem;border-top:1px solid #2a2218;">
-    <div style="display:flex;justify-content:space-between;font-size:1.2rem;margin-bottom:1rem;">
-      <span>Total</span>
-      <strong id="cart-total" style="color:var(--gold);">PKR 0</strong>
+  <div class="cart-items" id="cart-items"></div>
+  <div class="cart-footer">
+    <div style="display:flex; justify-content:space-between; font-size:1.2rem; margin-bottom:15px;">
+      <span>Total</span><strong id="cart-total" style="color:var(--gold);">PKR 0</strong>
     </div>
-    <button onclick="placeOrder()" style="width:100%;padding:1.1rem;background:var(--gold);color:#000;border:none;border-radius:12px;font-weight:700;font-size:1.1rem;">
-      Place Order
-    </button>
+    <button class="btn-primary" onclick="placeOrder()">Checkout</button>
   </div>
 </div>
 
 <script>
-  // ================== FIREBASE CONFIG ==================
   const firebaseConfig = {
     apiKey: "AIzaSyBvfA2VXcrx69iS-3VaCR9lA6mGyn6OicI",
     authDomain: "dishify-menu.firebaseapp.com",
@@ -220,180 +106,101 @@
     messagingSenderId: "182873179650",
     appId: "1:182873179650:web:8ff8cf3c04789d9f7b091b"
   };
-
   firebase.initializeApp(firebaseConfig);
   const db = firebase.database();
 
-  // ================== LOAD RESTAURANT ==================
   const params = new URLSearchParams(location.search);
   const restaurantId = params.get('r');
+  let currentItem = null, cart = [];
 
-  let restaurant = null;
-  let currentItem = null;
-  let cart = [];
-
-  if (!restaurantId) {
-    document.body.innerHTML = `<div style="padding:100px;text-align:center;color:#888;">No restaurant selected. Scan a QR code.</div>`;
-  } else {
-    const restRef = db.ref('restaurants/' + restaurantId);
-    
-    restRef.on('value', (snapshot) => {
-      restaurant = snapshot.val();
-      if (!restaurant) {
-        document.getElementById('r-name').textContent = "Restaurant Not Found";
-        return;
-      }
-
-      // Render header
-      document.getElementById('r-name').textContent = restaurant.name || "Restaurant";
-      document.getElementById('r-cuisine').textContent = restaurant.cuisine || "";
-      document.getElementById('r-desc').textContent = restaurant.description || "";
-      document.getElementById('r-emoji').textContent = restaurant.emoji || "🍽️";
-      document.title = (restaurant.name || "Menu") + " — Dishify";
-
-      renderCategoriesAndMenu();
-    });
-  }
-
-  function renderCategoriesAndMenu() {
-    if (!restaurant || !restaurant.menu) return;
-
-    const categories = [...new Set(restaurant.menu.map(i => i.category))];
-
-    // Render tabs
-    let tabsHTML = '';
-    categories.forEach((cat, i) => {
-      tabsHTML += `<button class="cat-tab ${i===0?'active':''}" onclick="switchCategory(this, '${cat}')">${cat}</button>`;
-    });
-    document.getElementById('category-tabs').innerHTML = tabsHTML;
-
-    // Render menu
-    let menuHTML = '';
-    categories.forEach(cat => {
-      const items = restaurant.menu.filter(i => i.category === cat);
-      menuHTML += `<div class="category-group"><div class="category-title">${cat}</div>`;
+  if (restaurantId) {
+    db.ref('restaurants/' + restaurantId).on('value', (snapshot) => {
+      const r = snapshot.val();
+      if (!r) return;
+      document.getElementById('r-name').textContent = r.name || "Menu";
+      document.getElementById('r-cuisine').textContent = r.cuisine || "";
+      document.getElementById('r-emoji').textContent = r.emoji || "🍽️";
       
-      items.forEach(item => {
-        menuHTML += `
-          <div class="menu-item" onclick="openItem(${JSON.stringify(item).replace(/"/g, '&quot;')})">
-            <div class="item-img">${item.emoji || '🍽️'}</div>
-            <div style="flex:1">
-              <div class="item-name">${item.name}</div>
-              <div class="item-desc">${item.desc || ''}</div>
-              <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px;">
-                <div class="item-price">PKR ${item.price.toLocaleString()}</div>
-                ${item.hasAR ? '<span style="color:#8ab4ff;font-size:0.8rem;">🥽 AR</span>' : ''}
-              </div>
-            </div>
-            <button class="add-btn" onclick="event.stopPropagation();quickAdd(${JSON.stringify(item).replace(/"/g, '&quot;')})">+</button>
-          </div>`;
-      });
-      menuHTML += `</div>`;
+      if(r.menu) {
+        const categories = [...new Set(r.menu.map(i => i.category))];
+        let html = '';
+        categories.forEach(cat => {
+          html += `<div class="category-title">${cat}</div>`;
+          r.menu.filter(i => i.category === cat).forEach(item => {
+            html += `
+              <div class="menu-item" onclick='openItem(${JSON.stringify(item).replace(/'/g, "&#39;")})'>
+                <div class="item-img">${item.emoji || '🍽️'}</div>
+                <div class="item-info">
+                  <div class="item-name">${item.name}</div>
+                  <div class="item-desc">${item.desc || ''}</div>
+                  <div class="item-price">PKR ${item.price.toLocaleString()}</div>
+                </div>
+                <button class="add-btn" onclick="event.stopPropagation(); addToCart(${JSON.stringify(item).replace(/'/g, "&#39;")})">+</button>
+              </div>`;
+          });
+        });
+        document.getElementById('menu-section').innerHTML = html;
+      }
     });
-    document.getElementById('menu-section').innerHTML = menuHTML;
-  }
-
-  function switchCategory(btn, cat) {
-    document.querySelectorAll('.cat-tab').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
   }
 
   function openItem(item) {
     currentItem = item;
-    document.getElementById('modal-img').innerHTML = item.emoji || '🍽️';
+    document.getElementById('modal-img').textContent = item.emoji || '🍽️';
     document.getElementById('modal-name').textContent = item.name;
-    document.getElementById('modal-price').innerHTML = `PKR <strong>${item.price.toLocaleString()}</strong>`;
     document.getElementById('modal-desc').textContent = item.desc || '';
+    document.getElementById('modal-price').textContent = `PKR ${item.price.toLocaleString()}`;
     document.getElementById('ar-btn').style.display = item.hasAR && item.model ? 'block' : 'none';
     document.getElementById('item-modal').classList.add('open');
   }
 
-  function closeModal() {
-    document.getElementById('item-modal').classList.remove('open');
-  }
-
+  function closeModal() { document.getElementById('item-modal').classList.remove('open'); }
   function openAR() {
-    if (!currentItem?.model) return;
-    const viewer = document.getElementById('ar-viewer');
-    viewer.src = currentItem.model;
+    if(!currentItem?.model) return;
+    document.getElementById('ar-viewer').src = currentItem.model;
     document.getElementById('ar-overlay').classList.add('open');
     closeModal();
   }
-
-  function closeAR() {
-    document.getElementById('ar-overlay').classList.remove('open');
-  }
-
-  function quickAdd(item) {
-    addToCart(item);
-  }
-
-  function addCurrentToCart() {
-    if (currentItem) addToCart(currentItem);
-    closeModal();
-  }
-
+  function closeAR() { document.getElementById('ar-overlay').classList.remove('open'); }
+  
   function addToCart(item) {
-    const existing = cart.find(c => c.id === item.id);
-    if (existing) existing.qty = (existing.qty || 1) + 1;
-    else cart.push({ ...item, qty: 1 });
+    const existing = cart.find(c => c.name === item.name);
+    existing ? existing.qty++ : cart.push({...item, qty: 1});
     updateCart();
   }
-
+  function addCurrentToCart() { addToCart(currentItem); closeModal(); }
+  
   function updateCart() {
-    const count = cart.reduce((sum, i) => sum + (i.qty || 1), 0);
-    document.getElementById('cart-count').textContent = count;
-
-    let html = '';
-    let total = 0;
+    document.getElementById('cart-count').textContent = cart.reduce((sum, i) => sum + i.qty, 0);
+    let total = 0, html = '';
     cart.forEach((item, index) => {
-      const itemTotal = item.price * (item.qty || 1);
-      total += itemTotal;
+      total += item.price * item.qty;
       html += `
-        <div style="display:flex;gap:15px;padding:12px 0;border-bottom:1px solid #2a2218;">
-          <div style="font-size:2rem;">${item.emoji}</div>
-          <div style="flex:1">
-            <div>${item.name}</div>
-            <div style="color:var(--muted);font-size:0.85rem;">PKR ${item.price} × ${item.qty||1}</div>
+        <div style="display:flex; justify-content:space-between; margin-bottom:15px; border-bottom:1px solid #222; padding-bottom:15px;">
+          <div>
+            <div style="color:#fff;">${item.name}</div>
+            <div style="color:#888; font-size:0.85rem;">PKR ${item.price} × ${item.qty}</div>
           </div>
-          <div style="text-align:right;">
-            <div style="color:var(--gold);">PKR ${itemTotal}</div>
-            <button onclick="changeQty(${index}, -1)" style="background:none;border:none;color:#c00;font-size:1.2rem;">−</button>
-          </div>
+          <button onclick="changeQty(${index}, -1)" style="background:none; border:none; color:var(--gold); font-size:1.5rem; cursor:pointer;">−</button>
         </div>`;
     });
-    document.getElementById('cart-items').innerHTML = html || '<div style="text-align:center;padding:60px 20px;color:#666;">Cart is empty</div>';
+    document.getElementById('cart-items').innerHTML = html || '<p style="text-align:center; color:#666;">Empty</p>';
     document.getElementById('cart-total').textContent = `PKR ${total.toLocaleString()}`;
   }
-
+  
   function changeQty(index, delta) {
-    cart[index].qty = (cart[index].qty || 1) + delta;
-    if (cart[index].qty < 1) cart.splice(index, 1);
+    cart[index].qty += delta;
+    if(cart[index].qty <= 0) cart.splice(index, 1);
     updateCart();
   }
-
-  function openCart() {
-    document.getElementById('cart-overlay').classList.add('open');
-    document.getElementById('cart-drawer').classList.add('open');
-    updateCart();
-  }
-
-  function closeCart() {
-    document.getElementById('cart-overlay').classList.remove('open');
-    document.getElementById('cart-drawer').classList.remove('open');
-  }
-
+  
+  function openCart() { document.getElementById('cart-overlay').classList.add('open'); document.getElementById('cart-drawer').classList.add('open'); }
+  function closeCart() { document.getElementById('cart-overlay').classList.remove('open'); document.getElementById('cart-drawer').classList.remove('open'); }
   function placeOrder() {
-    if (cart.length === 0) return alert("Cart is empty!");
-    const total = cart.reduce((sum, i) => sum + i.price * (i.qty || 1), 0);
-    alert(`✅ Order Placed Successfully!\n\nTotal: PKR ${total.toLocaleString()}\n\nThank you for dining with us! 🍽️`);
-    cart = [];
-    updateCart();
-    closeCart();
+    if(cart.length === 0) return alert("Cart empty!");
+    alert("Order Placed Successfully! 🍽️");
+    cart = []; updateCart(); closeCart();
   }
-
-  // Initial cart update
-  updateCart();
 </script>
 </body>
 </html>

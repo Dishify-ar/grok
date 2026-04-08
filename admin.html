@@ -4,92 +4,79 @@
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Admin • Dishify</title>
-  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-database-compat.js"></script>
   <style>
-    :root {
-      --gold: #d4af37;
-      --red: #c0262e;
-      --dark: #0a0a0a;
-      --dark2: #121212;
-    }
+    :root { --gold: #d4af37; --dark: #050505; --glass: rgba(255, 255, 255, 0.05); }
     body {
-      background: var(--dark);
-      color: #f5f5f5;
-      font-family: 'Inter', sans-serif;
-      margin: 0;
-      display: flex;
-      min-height: 100vh;
+      background: radial-gradient(circle at top right, #1a1a1a, var(--dark));
+      color: #e0e0e0; font-family: 'Inter', sans-serif; margin: 0; display: flex; min-height: 100vh;
     }
     .sidebar {
-      width: 260px;
-      background: var(--dark2);
-      padding: 30px 0;
-      border-right: 1px solid #333;
+      width: 260px; background: rgba(0,0,0,0.5); backdrop-filter: blur(20px);
+      padding: 40px 20px; border-right: 1px solid rgba(212,175,55,0.1);
     }
     .logo {
-      font-family: 'Playfair Display', serif;
-      font-size: 2rem;
-      color: var(--gold);
-      text-align: center;
-      margin-bottom: 40px;
+      font-family: 'Playfair Display', serif; font-size: 2.2rem; color: var(--gold);
+      text-align: center; margin-bottom: 50px; text-shadow: 0 0 15px rgba(212,175,55,0.3);
     }
-    .main {
-      flex: 1;
-      padding: 40px;
+    .nav-item {
+      display: block; padding: 15px 20px; color: #888; text-decoration: none;
+      border-radius: 12px; margin-bottom: 10px; transition: all 0.3s; cursor: pointer;
     }
-    .btn-gold {
-      background: var(--gold);
-      color: #000;
-      padding: 12px 24px;
-      border: none;
-      border-radius: 8px;
-      font-weight: 600;
-      cursor: pointer;
-    }
+    .nav-item:hover, .nav-item.active { background: var(--glass); color: var(--gold); transform: translateX(5px); }
+    .main { flex: 1; padding: 50px; }
+    .panel { display: none; animation: fadeIn 0.5s ease forwards; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
     .card {
-      background: var(--dark2);
-      border-radius: 16px;
-      padding: 30px;
-      margin-bottom: 30px;
+      background: var(--glass); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 24px; padding: 40px; box-shadow: 0 20px 40px rgba(0,0,0,0.4);
     }
-    input, select, textarea {
-      width: 100%;
-      padding: 12px;
-      background: #1f1f1f;
-      border: 1px solid #444;
-      color: white;
-      border-radius: 8px;
-      margin-top: 8px;
+    button {
+      background: var(--gold); color: #000; padding: 14px 28px; border: none;
+      border-radius: 12px; font-weight: 700; cursor: pointer; transition: 0.3s;
+    }
+    button:hover { transform: scale(1.05); box-shadow: 0 0 20px rgba(212,175,55,0.4); }
+    select, input, textarea {
+      width: 100%; padding: 15px; background: rgba(255,255,255,0.05);
+      border: 1px solid #333; color: white; border-radius: 12px; margin-bottom: 15px; box-sizing: border-box;
     }
   </style>
 </head>
 <body>
   <div class="sidebar">
     <div class="logo">DISHIFY</div>
-    <div style="padding:0 30px;">
-      <a href="#" onclick="showPanel('qr')" style="display:block; padding:12px; color:var(--gold);">📱 QR Codes</a>
-      <a href="#" onclick="showPanel('restaurants')" style="display:block; padding:12px;">🏪 Restaurants</a>
-      <a href="#" onclick="showPanel('menu-editor')" style="display:block; padding:12px;">🍽️ Menu Editor</a>
-    </div>
+    <a class="nav-item active" onclick="showPanel('qr', this)">📱 QR Codes</a>
+    <a class="nav-item" onclick="showPanel('restaurants', this)">🏢 Restaurants</a>
+    <a class="nav-item" onclick="showPanel('menu-editor', this)">🍽️ Menu Editor</a>
   </div>
 
   <div class="main">
-    <!-- QR Panel -->
-    <div id="panel-qr" class="panel">
-      <h1 style="color:var(--gold);">Generate QR Code</h1>
+    <div id="panel-qr" class="panel" style="display: block;">
+      <h1 style="color:var(--gold); font-family:'Playfair Display', serif;">Generate QR Code</h1>
       <div class="card">
-        <select id="qr-restaurant" onchange="generateQR()" style="padding:15px; font-size:1.1rem;"></select>
-        <div id="qrcode" style="width:260px;height:260px;margin:30px auto;background:white;padding:10px;border-radius:12px;"></div>
-        <button class="btn-gold" onclick="downloadQR()">Download PNG</button>
-        <button class="btn-gold" onclick="printQR()" style="margin-left:10px;">Print Card</button>
+        <select id="qr-restaurant" onchange="generateQR()">
+          <option value="">Select a Restaurant...</option>
+        </select>
+        <div id="qrcode" style="width:240px;height:240px;margin:30px auto;background:white;padding:15px;border-radius:16px;box-shadow: 0 10px 30px rgba(0,0,0,0.5);"></div>
       </div>
     </div>
 
-    <!-- Add your other panels (Restaurants, Menu Editor) similarly using the same style -->
-    <!-- For full functionality, add the forms from your old admin.html -->
+    <div id="panel-restaurants" class="panel">
+      <h1 style="color:var(--gold); font-family:'Playfair Display', serif;">Manage Restaurants</h1>
+      <div class="card">
+        <p>Restaurant management form goes here.</p>
+      </div>
+    </div>
+
+    <div id="panel-menu-editor" class="panel">
+      <h1 style="color:var(--gold); font-family:'Playfair Display', serif;">Menu Editor</h1>
+      <div class="card">
+        <p>Menu editing tools go here.</p>
+      </div>
+    </div>
   </div>
 
   <script>
@@ -107,28 +94,36 @@
     const db = firebase.database();
     const restaurantsRef = db.ref('restaurants');
 
+    function showPanel(panelId, element) {
+      document.querySelectorAll('.panel').forEach(p => p.style.display = 'none');
+      document.getElementById('panel-' + panelId).style.display = 'block';
+      document.querySelectorAll('.nav-item').forEach(nav => nav.classList.remove('active'));
+      element.classList.add('active');
+    }
+
     function generateQR() {
       const rid = document.getElementById('qr-restaurant').value;
+      const qrContainer = document.getElementById('qrcode');
+      qrContainer.innerHTML = '';
       if (!rid) return;
       const url = location.origin + location.pathname.replace('admin.html', '') + 'menu.html?r=' + rid;
-      document.getElementById('qrcode').innerHTML = '';
-      new QRCode(document.getElementById('qrcode'), {
+      new QRCode(qrContainer, {
         text: url,
-        width: 240,
-        height: 240,
-        colorDark: "#000000",
+        width: 210,
+        height: 210,
+        colorDark: "#050505",
         colorLight: "#ffffff"
       });
     }
 
-    // Populate dropdowns and listen for real-time updates
     restaurantsRef.on('value', (snapshot) => {
       const data = snapshot.val() || {};
-      // Populate QR dropdown, restaurant lists, etc.
-      console.log("🔥 Data synced from Firebase cloud");
+      const select = document.getElementById('qr-restaurant');
+      select.innerHTML = '<option value="">Select a Restaurant...</option>';
+      Object.keys(data).forEach(key => {
+        select.innerHTML += `<option value="${key}">${data[key].name}</option>`;
+      });
     });
-
-    // Add your other functions (addRestaurant, addMenuItem, etc.) here using restaurantsRef.set() or .push()
   </script>
 </body>
 </html>
