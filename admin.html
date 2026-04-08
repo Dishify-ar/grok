@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Admin • Dishify</title>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-database-compat.js"></script>
+  <style>
+    :root { --gold: #d4af37; --dark: #0a0a0a; --dark2: #121212; }
+    body { background: var(--dark); color: #f5f5f5; font-family: 'Inter', sans-serif; margin: 0; display: flex; min-height: 100vh; }
+    .sidebar { width: 260px; background: var(--dark2); padding: 30px 0; border-right: 1px solid #333; position: fixed; height: 100vh; }
+    .logo { font-family: 'Playfair Display', serif; font-size: 2rem; color: var(--gold); text-align: center; margin-bottom: 40px; }
+    .nav-item { display: block; padding: 15px 30px; color: #888; text-decoration: none; cursor: pointer; transition: 0.3s; }
+    .nav-item.active { color: var(--gold); background: rgba(212, 175, 55, 0.1); border-right: 3px solid var(--gold); }
+    .main { flex: 1; padding: 40px; margin-left: 260px; }
+    .panel { display: none; animation: fadeIn 0.4s; }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    .card { background: var(--dark2); border-radius: 16px; padding: 30px; margin-bottom: 30px; border: 1px solid #222; }
+    h2 { color: var(--gold); font-family: 'Playfair Display', serif; margin-top: 0; }
+    label { display: block; margin-top: 15px; color: #aaa; font-size: 0.9rem; }
+    input, select, textarea { width: 100%; padding: 12px; background: #1f1f1f; border: 1px solid #444; color: white; border-radius: 8px; margin-top: 8px; box-sizing: border-box; }
+    .btn-gold { background: var(--gold); color: #000; padding: 12px 24px; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; margin-top: 20px; transition: 0.3s; }
+    table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+    th { text-align: left; color: var(--gold); border-bottom: 1px solid #333; padding: 10px; }
+    td { padding: 10px; border-bottom: 1px solid #222; }
+  </style>
+</head>
+<body>
+  <div class="sidebar">
+    <div class="logo">DISHIFY</div>
+    <div class="nav-item active" onclick="showPanel('qr', this)">📱 QR Codes</div>
+    <div class="nav-item" onclick="showPanel('restaurants', this)">🏢 Restaurants</div>
+    <div class="nav-item" onclick="showPanel('menu-editor', this)">🍽️ Menu Editor</div>
+  </div>
+
+  <div class="main">
+    <div id="panel-qr" class="panel" style="display: block;">
+      <h2>Generate QR Code</h2>
+      <div class="card">
+        <label>Select Restaurant</label>
+        <select id="qr-restaurant" onchange="generateQR()"></select>
+        <div id="qrcode" style="width:260px;height:260px;margin:30px auto;background:white;padding:10px;border-radius:12px;"></div>
+        <button class="btn-gold" onclick="downloadQR()">Download PNG</button>
+      </div>
+    </div>
+
+    <div id="panel-restaurants" class="panel">
+      <h2>Add New Restaurant</h2>
+      <div class="card">
+        <input type="text" id="rest-name" placeholder="Restaurant Name">
+        <input type="text" id="rest-emoji" placeholder="Emoji (e.g. 🍕)">
+        <input type="text" id="rest-cuisine" placeholder="Cuisine Type">
+        <button class="btn-gold" onclick="addRestaurant()">Save Restaurant</button>
+      </div>
+      <div class="card">
+        <table id="rest-table">
+          <thead><tr><th>Name</th><th>Cuisine</th><th>Action</th></tr></thead>
+          <tbody id="rest-list-body"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div id="panel-menu-editor" class="panel">
+      <h2>Add Menu Item</h2>
+      <div class="card">
+        <select id="menu-target-restaurant"></select>
+        <input type="text" id="item-name" placeholder="Item Name">
+        <input type="text" id="item-cat" placeholder="Category (e.g. Starters)">
+        <input type="number" id="item-price" placeholder="Price (PKR)">
+        <input type="text" id="item-emoji" placeholder="Emoji (e.g. 🍔)">
+        <textarea id="item-desc" placeholder="Description" rows="3"></textarea>
+        <input type="text" id="item-model" placeholder="AR Model link (.glb)">
+        <button class="btn-gold" onclick="addMenuItem()">Add to Menu</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyBvfA2VXcrx69iS-3VaCR9lA6mGyn6OicI",
+      authDomain: "dishify-menu.firebaseapp.com",
+      databaseURL: "https://dishify-menu-default-rtdb.firebaseio.com",
+      projectId: "dishify-menu",
+      storageBucket: "dishify-menu.firebasestorage.app",
+      messagingSenderId: "182873179650",
+      appId: "1:182873179650:web:8ff8cf3c04789d9f7b091b"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    function showPanel(panelId, el) {
+      document.querySelectorAll('.panel').forEach(p => p.style.display = 'none');
+      document.getElementById('panel-' + panelId).style.display = 'block';
+      document.querySelectorAll('.nav-item').forEach(nav => nav.classList.remove('active'));
+      el.classList.add('active');
+    }
+
+    function addRestaurant() {
+      const name = document.getElementById('rest-name').value;
+      const emoji = document.getElementById('rest-emoji').value;
+      const cuisine = document.getElementById('rest-cuisine').value;
+      if(name) db.ref('restaurants').push({ name, emoji, cuisine });
+    }
+
+    function addMenuItem() {
+      const rid = document.getElementById('menu-target-restaurant').value;
+      const item = {
+        name: document.getElementById('item-name').value,
+        category: document.getElementById('item-cat').value,
+        price: parseInt(document.getElementById('item-price').value),
+        emoji: document.getElementById('item-emoji').value,
+        desc: document.getElementById('item-desc').value,
+        model: document.getElementById('item-model').value,
+        hasAR: !!document.getElementById('item-model').value
+      };
+      if(rid) db.ref(`restaurants/${rid}/menu`).push(item);
+    }
+
+    db.ref('restaurants').on('value', (snapshot) => {
+      const data = snapshot.val() || {};
+      const qrSelect = document.getElementById('qr-restaurant');
+      const menuSelect = document.getElementById('menu-target-restaurant');
+      const tableBody = document.getElementById('rest-list-body');
+      qrSelect.innerHTML = menuSelect.innerHTML = '<option value="">Select...</option>';
+      tableBody.innerHTML = '';
+      Object.keys(data).forEach(key => {
+        const r = data[key];
+        qrSelect.innerHTML += `<option value="${key}">${r.name}</option>`;
+        menuSelect.innerHTML += `<option value="${key}">${r.name}</option>`;
+        tableBody.innerHTML += `<tr><td>${r.name}</td><td>${r.cuisine}</td><td><button onclick="db.ref('restaurants/${key}').remove()">Delete</button></td></tr>`;
+      });
+    });
+
+    function generateQR() {
+      const rid = document.getElementById('qr-restaurant').value;
+      const qrBox = document.getElementById('qrcode');
+      qrBox.innerHTML = '';
+      if(!rid) return;
+      const path = window.location.pathname.replace('admin.html', 'menu.html');
+      const url = window.location.origin + path + '?r=' + rid;
+      new QRCode(qrBox, { text: url, width: 240, height: 240 });
+    }
+
+    function downloadQR() {
+      const img = document.querySelector('#qrcode img');
+      if(img) {
+        const link = document.createElement('a');
+        link.download = 'qr.png';
+        link.href = img.src;
+        link.click();
+      }
+    }
+  </script>
+</body>
+</html>

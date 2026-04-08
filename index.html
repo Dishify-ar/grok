@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Dishify • Luxury Menus</title>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Inter:wght@400;600&display=swap" rel="stylesheet">
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-database-compat.js"></script>
+  <style>
+    body { background: #0a0a0a; color: #f5f5f5; font-family: 'Inter', sans-serif; margin: 0; }
+    .hero { height: 60vh; background: linear-gradient(rgba(0,0,0,0.6), #0a0a0a), url('https://picsum.photos/id/1015/1200/800'); background-size: cover; display: flex; align-items: center; justify-content: center; text-align: center; }
+    h1 { font-family: 'Playfair Display', serif; font-size: 4rem; color: #d4af37; margin: 0; }
+    .card { background: #121212; border-radius: 16px; padding: 25px; margin: 20px auto; max-width: 600px; display: flex; align-items: center; gap: 20px; cursor: pointer; border: 1px solid #333; transition: 0.3s; }
+    .card:hover { border-color: #d4af37; transform: translateY(-5px); }
+    .emoji { font-size: 3rem; }
+  </style>
+</head>
+<body>
+  <div class="hero"><div><h1>DISHIFY</h1><p>Premium Digital Dining</p></div></div>
+  <div id="restaurants-list" style="padding: 40px 20px;"></div>
+  <div style="text-align:center; padding: 40px;"><a href="admin.html" style="color:#d4af37; text-decoration:none;">Admin Panel</a></div>
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyBvfA2VXcrx69iS-3VaCR9lA6mGyn6OicI",
+      authDomain: "dishify-menu.firebaseapp.com",
+      databaseURL: "https://dishify-menu-default-rtdb.firebaseio.com",
+      projectId: "dishify-menu",
+      storageBucket: "dishify-menu.firebasestorage.app",
+      messagingSenderId: "182873179650",
+      appId: "1:182873179650:web:8ff8cf3c04789d9f7b091b"
+    };
+    firebase.initializeApp(firebaseConfig);
+    firebase.database().ref('restaurants').on('value', (snap) => {
+      const data = snap.val() || {};
+      let html = '';
+      Object.keys(data).forEach(key => {
+        html += `<div class="card" onclick="location.href='menu.html?r=${key}'"><div class="emoji">${data[key].emoji || '🍽️'}</div><div><h3>${data[key].name}</h3><p>${data[key].cuisine}</p></div></div>`;
+      });
+      document.getElementById('restaurants-list').innerHTML = html;
+    });
+  </script>
+</body>
+</html>
