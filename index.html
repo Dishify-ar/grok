@@ -1,196 +1,67 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ARMenu • Optimized Digital Menus + AR</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-    <script type="module" src="https://unpkg.com/@google/model-viewer@latest/dist/model-viewer.min.js"></script>
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Playfair+Display:wght@700&display=swap');
-        
-        body { font-family: 'Inter', system_ui, sans-serif; }
-        .heading-font { font-family: 'Playfair Display', sans-serif; }
-
-        model-viewer {
-            width: 100%;
-            height: 420px;
-            background-color: #f8fafc;
-            --poster-color: #f8fafc;
-        }
-
-        /* AR button pulse only when needed */
-        .ar-button {
-            animation: pulse 2s infinite;
-        }
-
-        @keyframes pulse {
-            0%, 100% { transform: scale(1); }
-            50% { transform: scale(1.05); }
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dish.ify - Digital Menus</title>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --gold: #c9a96e; --dark: #0a0906; --dark2: #13110d; --muted: #7a6a50;
+    }
+    body { background: var(--dark); color: #f0e8d8; font-family: 'DM Sans', sans-serif; margin:0; padding:0; }
+    .container { max-width: 900px; margin: 40px auto; padding: 20px; }
+    h1 { font-family: 'Playfair Display', serif; font-size: 2.8rem; text-align: center; margin-bottom: 10px; color: var(--gold); }
+    p { text-align: center; color: var(--muted); margin-bottom: 40px; }
+    .rest-card {
+      background: var(--dark2); border: 1px solid #2a2218; border-radius: 16px;
+      padding: 24px; margin-bottom: 20px; display: flex; align-items: center; gap: 20px;
+      cursor: pointer; transition: all 0.3s;
+    }
+    .rest-card:hover { border-color: var(--gold); transform: translateY(-4px); }
+    .emoji { font-size: 3.5rem; }
+    .info h3 { font-family: 'Playfair Display', serif; font-size: 1.6rem; margin:0 0 8px 0; }
+    .info p { color: var(--muted); margin:0; }
+    .btn { background: var(--gold); color: var(--dark); padding: 12px 24px; border: none; border-radius: 8px; font-weight: 500; cursor: pointer; }
+  </style>
 </head>
-<body class="bg-slate-50">
-    <!-- Navbar same as before (kept minimal) -->
-    <nav class="bg-white border-b sticky top-0 z-50 shadow-sm">
-        <div class="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-            <div class="flex items-center gap-x-3">
-                <div class="w-10 h-10 bg-emerald-500 rounded-2xl flex items-center justify-center text-white text-2xl">🍽️</div>
-                <h1 class="heading-font text-2xl tracking-tight">ARMenu</h1>
-            </div>
-            <div id="restaurant-header" class="flex items-center gap-x-3 hidden">
-                <img id="restaurant-logo" src="" alt="" class="w-9 h-9 object-cover rounded-2xl border">
-                <div>
-                    <h2 id="restaurant-name" class="font-semibold text-xl"></h2>
-                    <p id="restaurant-subtitle" class="text-sm text-slate-500"></p>
-                </div>
-            </div>
-            <div class="flex items-center gap-x-4">
-                <button onclick="toggleCart()" class="flex items-center gap-x-2 bg-white border border-slate-200 hover:border-emerald-300 px-5 py-2.5 rounded-3xl text-sm font-semibold">
-                    🛒 Cart <span id="cart-count-badge" class="bg-emerald-500 text-white text-xs font-bold px-2.5 py-px rounded-full">0</span>
-                </button>
-                <button onclick="showQRModal()" class="flex items-center gap-x-2 bg-emerald-500 hover:bg-emerald-600 text-white px-5 py-2.5 rounded-3xl text-sm font-semibold">📱 Generate QR</button>
-                <button onclick="toggleAdmin()" class="text-slate-500 hover:text-slate-700 px-4 py-2 rounded-3xl text-sm">⚙️ Admin</button>
-                <button onclick="goHome()" class="text-slate-500 hover:text-slate-700 px-4 py-2 rounded-3xl text-sm">🏠</button>
-            </div>
-        </div>
-    </nav>
+<body>
+  <div class="container">
+    <h1>Dish.ify</h1>
+    <p>Scan QR code at any table to see the menu with AR</p>
 
-    <div class="max-w-7xl mx-auto px-6 py-8">
-        <!-- Home screen (unchanged) -->
-        <div id="home-screen"> <!-- same as previous --> </div>
+    <div id="restaurants-list"></div>
 
-        <!-- Menu screen (unchanged) -->
-        <div id="menu-screen" class="hidden"> <!-- categories + grid same --> </div>
-
-        <!-- Admin screen with new optimized model recommendation -->
-        <div id="admin-screen" class="hidden">
-            <div class="bg-white rounded-3xl p-8 max-w-4xl mx-auto">
-                <h2 class="text-3xl font-semibold mb-6">Admin — Add Optimized Items</h2>
-                <!-- ... previous admin fields ... -->
-                <div class="mt-4 text-xs bg-amber-50 border border-amber-200 p-4 rounded-2xl">
-                    <strong>AR Optimization Tips:</strong><br>
-                    • Use GLB files &lt; 5MB (ideally &lt; 2MB)<br>
-                    • Target: 10k–50k triangles max<br>
-                    • Textures: 1024×1024 or smaller, use WebP/KTX2<br>
-                    • Tools: Blender (Decimate), glTF Transform, https://glb.ee, Needle Cloud<br>
-                    • Add real-world scale in meters before export
-                </div>
-            </div>
-        </div>
+    <div style="text-align:center; margin-top:60px; color:var(--muted); font-size:0.9rem;">
+      <p>Admin → <a href="admin.html" style="color:var(--gold);">Go to Admin Panel</a></p>
     </div>
+  </div>
 
-    <!-- ITEM DETAIL MODAL – OPTIMIZED AR VIEWER -->
-    <div id="item-modal" onclick="if(event.target.id === 'item-modal') hideItemModal()" 
-         class="hidden fixed inset-0 bg-black/70 z-[100] flex items-center justify-center">
-        <div onclick="event.stopImmediatePropagation()" class="modal bg-white rounded-3xl max-w-2xl w-full mx-4 overflow-hidden">
-            <div class="p-6">
-                <div class="flex justify-between">
-                    <div>
-                        <h2 id="modal-name" class="text-3xl font-semibold"></h2>
-                        <p id="modal-price" class="text-emerald-600 text-2xl font-semibold"></p>
-                    </div>
-                    <button onclick="hideItemModal()" class="text-4xl text-slate-300">×</button>
-                </div>
-                <p id="modal-desc" class="mt-6 text-slate-600"></p>
+  <script>
+    let data = JSON.parse(localStorage.getItem('dishify_restaurants') || '[]');
+    if (data.length === 0) {
+      // Demo restaurant
+      data = [{
+        id: 'demo-restaurant',
+        name: 'The Grand Table',
+        cuisine: 'Contemporary Fine Dining',
+        emoji: '🍽️',
+        description: 'Modern cuisine with seasonal ingredients'
+      }];
+      localStorage.setItem('dishify_restaurants', JSON.stringify(data));
+    }
 
-                <!-- OPTIMIZED MODEL VIEWER -->
-                <div class="mt-8">
-                    <model-viewer id="ar-viewer"
-                                  loading="lazy"
-                                  preload="none"
-                                  poster="https://picsum.photos/id/1015/600/400"  <!-- replace with dish image -->
-                                  ar
-                                  ar-modes="webxr scene-viewer quick-look"
-                                  ar-scale="auto"
-                                  ar-placement="floor"
-                                  camera-controls
-                                  shadow-intensity="0.3"          <!-- reduced for perf -->
-                                  exposure="0.7"
-                                  environment-intensity="0.6"
-                                  touch-action="pan-y"
-                                  style="width:100%; height:420px; border-radius:16px; background:#f8fafc;">
-                    </model-viewer>
-                    <p class="text-center text-xs text-slate-400 mt-3">
-                        Point camera at table • Tap AR button • Real size on your table
-                    </p>
-                </div>
-            </div>
-            
-            <div class="bg-slate-50 px-6 py-6 border-t flex justify-end">
-                <button onclick="addCurrentToCartFromModal(); hideItemModal()" 
-                        class="bg-emerald-500 text-white px-10 py-4 rounded-3xl font-semibold">
-                    Add to Cart
-                </button>
-            </div>
+    const list = document.getElementById('restaurants-list');
+    list.innerHTML = data.map(r => `
+      <div class="rest-card" onclick="window.location='menu.html?r=${r.id}'">
+        <div class="emoji">${r.emoji || '🍽️'}</div>
+        <div class="info">
+          <h3>${r.name}</h3>
+          <p>${r.cuisine || ''}</p>
+          <p style="font-size:0.85rem; margin-top:8px;">Tap to view menu →</p>
         </div>
-    </div>
-
-    <!-- Cart & QR modals remain the same -->
-
-    <script>
-        // ... (keep your existing data store, restaurants, cart logic, render functions as before)
-
-        let currentItemForCart = null;
-
-        function showItemModal(slug, itemId) {
-            const rest = getRestaurant(slug);
-            if (!rest) return;
-
-            let selectedItem = null;
-            rest.categories.forEach(cat => {
-                const found = cat.items.find(i => i.id === itemId);
-                if (found) selectedItem = found;
-            });
-            if (!selectedItem) return;
-
-            currentItemForCart = { slug, item: selectedItem };
-
-            document.getElementById('modal-name').textContent = selectedItem.name;
-            document.getElementById('modal-price').innerHTML = `PKR <span class="font-bold">${selectedItem.price}</span>`;
-            document.getElementById('modal-desc').textContent = selectedItem.desc;
-
-            const viewer = document.getElementById('ar-viewer');
-            
-            // Optimized loading
-            viewer.setAttribute('src', selectedItem.model || 'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/master/2.0/Duck/glTF-Binary/Duck.glb');
-            viewer.setAttribute('alt', selectedItem.name);
-            viewer.setAttribute('poster', selectedItem.img || 'https://picsum.photos/id/1015/600/400');
-
-            // Reset to avoid memory leaks from previous models
-            if (viewer.src) viewer.dismissPoster();
-
-            document.getElementById('item-modal').classList.remove('hidden');
-            document.getElementById('item-modal').classList.add('flex');
-        }
-
-        function hideItemModal() {
-            const modal = document.getElementById('item-modal');
-            modal.classList.add('hidden');
-            modal.classList.remove('flex');
-            
-            // Clear model to free memory
-            const viewer = document.getElementById('ar-viewer');
-            viewer.setAttribute('src', '');
-            currentItemForCart = null;
-        }
-
-        // Rest of your functions (addToCart, toggleCart, QR, admin, etc.) remain mostly the same
-
-        // Add this to admin when adding items (optional new field)
-        // In addMenuItem() you can encourage users to paste optimized GLB links
-
-        function init() {
-            // ... your previous init code
-            console.log('%c✅ ARMenu Optimized for Mobile AR!', 'color:#10b981; font-size:14px');
-            console.log('• webxr prioritized (faster than Scene Viewer)');
-            console.log('• Reduced shadow & lighting intensity');
-            console.log('• Lazy loading + memory cleanup');
-            console.log('Tip: Always optimize your .glb files before uploading!');
-        }
-
-        window.onload = init;
-    </script>
+      </div>
+    `).join('');
+  </script>
 </body>
 </html>
