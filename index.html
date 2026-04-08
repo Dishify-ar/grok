@@ -1,67 +1,174 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Dish.ify - Digital Menus</title>
-  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Dishify — Digital Menus & AR Dining</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
   <style>
     :root {
-      --gold: #c9a96e; --dark: #0a0906; --dark2: #13110d; --muted: #7a6a50;
+      --gold: #c9a96e;
+      --gold-light: #e8d5a3;
+      --dark: #0a0906;
+      --dark2: #13110d;
+      --dark3: #1e1a14;
+      --cream: #f5f0e8;
+      --red: #e8401c;
+      --text: #f0e8d8;
+      --muted: #7a6a50;
     }
-    body { background: var(--dark); color: #f0e8d8; font-family: 'DM Sans', sans-serif; margin:0; padding:0; }
-    .container { max-width: 900px; margin: 40px auto; padding: 20px; }
-    h1 { font-family: 'Playfair Display', serif; font-size: 2.8rem; text-align: center; margin-bottom: 10px; color: var(--gold); }
-    p { text-align: center; color: var(--muted); margin-bottom: 40px; }
-    .rest-card {
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: var(--dark); color: var(--text); font-family: 'DM Sans', sans-serif; min-height: 100vh; }
+
+    nav {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 1.2rem 3rem; border-bottom: 1px solid #2a2218;
+      position: sticky; top: 0; background: rgba(10,9,6,0.95); backdrop-filter: blur(10px); z-index: 100;
+    }
+    .nav-logo { font-family: 'Playfair Display', serif; font-size: 1.6rem; font-weight: 700; color: var(--gold); }
+    .nav-logo span { color: var(--red); }
+    .nav-links { display: flex; gap: 2rem; }
+    .nav-links a { color: var(--muted); text-decoration: none; font-size: 0.9rem; letter-spacing: 0.05em; transition: color 0.2s; }
+    .nav-links a:hover { color: var(--gold); }
+    .nav-cta { background: var(--gold); color: var(--dark); padding: 0.5rem 1.2rem; border-radius: 4px; font-size: 0.85rem; font-weight: 500; text-decoration: none; transition: background 0.2s; }
+    .nav-cta:hover { background: var(--gold-light); }
+
+    .hero {
+      text-align: center; padding: 6rem 2rem 4rem;
+      background: radial-gradient(ellipse at 50% 0%, #2a1f0a 0%, var(--dark) 70%);
+    }
+    .hero-tag { font-size: 0.75rem; letter-spacing: 0.3em; text-transform: uppercase; color: var(--gold); margin-bottom: 1.5rem; }
+    .hero h1 { font-family: 'Playfair Display', serif; font-size: clamp(3rem, 8vw, 6rem); font-weight: 900; line-height: 1.05; margin-bottom: 1.5rem; }
+    .hero h1 em { font-style: italic; color: var(--gold); }
+    .hero p { font-size: 1.1rem; color: var(--muted); max-width: 500px; margin: 0 auto 2.5rem; line-height: 1.7; }
+    .hero-btns { display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; }
+    .btn-primary { background: var(--gold); color: var(--dark); padding: 0.8rem 2rem; border-radius: 4px; font-size: 0.95rem; font-weight: 500; text-decoration: none; transition: all 0.2s; }
+    .btn-primary:hover { background: var(--gold-light); transform: translateY(-1px); }
+    .btn-outline { border: 1px solid var(--muted); color: var(--text); padding: 0.8rem 2rem; border-radius: 4px; font-size: 0.95rem; text-decoration: none; transition: all 0.2s; }
+    .btn-outline:hover { border-color: var(--gold); color: var(--gold); }
+
+    .features { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1.5rem; padding: 4rem 3rem; max-width: 1100px; margin: 0 auto; }
+    .feature { background: var(--dark2); border: 1px solid #2a2218; border-radius: 12px; padding: 2rem; }
+    .feature-icon { font-size: 1.8rem; margin-bottom: 1rem; }
+    .feature h3 { font-family: 'Playfair Display', serif; font-size: 1.1rem; margin-bottom: 0.5rem; color: var(--gold); }
+    .feature p { font-size: 0.9rem; color: var(--muted); line-height: 1.6; }
+
+    .restaurants-section { padding: 4rem 3rem; max-width: 1100px; margin: 0 auto; }
+    .section-header { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 2rem; }
+    .section-header h2 { font-family: 'Playfair Display', serif; font-size: 2rem; }
+    .section-header a { font-size: 0.85rem; color: var(--gold); text-decoration: none; }
+    .restaurants-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1.5rem; }
+
+    .restaurant-card {
       background: var(--dark2); border: 1px solid #2a2218; border-radius: 16px;
-      padding: 24px; margin-bottom: 20px; display: flex; align-items: center; gap: 20px;
-      cursor: pointer; transition: all 0.3s;
+      overflow: hidden; text-decoration: none; color: inherit;
+      transition: transform 0.2s, border-color 0.2s; display: block;
     }
-    .rest-card:hover { border-color: var(--gold); transform: translateY(-4px); }
-    .emoji { font-size: 3.5rem; }
-    .info h3 { font-family: 'Playfair Display', serif; font-size: 1.6rem; margin:0 0 8px 0; }
-    .info p { color: var(--muted); margin:0; }
-    .btn { background: var(--gold); color: var(--dark); padding: 12px 24px; border: none; border-radius: 8px; font-weight: 500; cursor: pointer; }
+    .restaurant-card:hover { transform: translateY(-4px); border-color: var(--gold); }
+    .card-thumb { width: 100%; height: 180px; object-fit: cover; background: var(--dark3); display: flex; align-items: center; justify-content: center; font-size: 3rem; }
+    .card-thumb img { width: 100%; height: 100%; object-fit: cover; }
+    .card-body { padding: 1.2rem; }
+    .card-cuisine { font-size: 0.7rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--gold); margin-bottom: 0.4rem; }
+    .card-name { font-family: 'Playfair Display', serif; font-size: 1.2rem; margin-bottom: 0.4rem; }
+    .card-meta { font-size: 0.8rem; color: var(--muted); display: flex; gap: 1rem; }
+    .card-badge { display: inline-block; background: #1e2a1a; color: #6fcf4a; font-size: 0.7rem; padding: 2px 8px; border-radius: 20px; margin-top: 0.7rem; }
+
+    footer { text-align: center; padding: 3rem; border-top: 1px solid #2a2218; color: var(--muted); font-size: 0.85rem; }
+    footer strong { color: var(--gold); font-family: 'Playfair Display', serif; }
   </style>
 </head>
 <body>
-  <div class="container">
-    <h1>Dish.ify</h1>
-    <p>Scan QR code at any table to see the menu with AR</p>
 
-    <div id="restaurants-list"></div>
-
-    <div style="text-align:center; margin-top:60px; color:var(--muted); font-size:0.9rem;">
-      <p>Admin → <a href="admin.html" style="color:var(--gold);">Go to Admin Panel</a></p>
-    </div>
+<nav>
+  <div class="nav-logo">Dish<span>.</span>ify</div>
+  <div class="nav-links">
+    <a href="#">Restaurants</a>
+    <a href="#">How it works</a>
+    <a href="#">Pricing</a>
   </div>
+  <a href="admin.html" class="nav-cta">Admin Panel</a>
+</nav>
 
-  <script>
-    let data = JSON.parse(localStorage.getItem('dishify_restaurants') || '[]');
-    if (data.length === 0) {
-      // Demo restaurant
-      data = [{
-        id: 'demo-restaurant',
-        name: 'The Grand Table',
-        cuisine: 'Contemporary Fine Dining',
-        emoji: '🍽️',
-        description: 'Modern cuisine with seasonal ingredients'
-      }];
-      localStorage.setItem('dishify_restaurants', JSON.stringify(data));
-    }
+<div class="hero">
+  <p class="hero-tag">Digital Menus &amp; AR Dining Experience</p>
+  <h1>Your menu,<br/><em>reimagined</em></h1>
+  <p>QR-powered digital menus with 3D dish previews and augmented reality. Scan, explore, and order — all from your phone.</p>
+  <div class="hero-btns">
+    <a href="admin.html" class="btn-primary">Add Your Restaurant</a>
+    <a href="#restaurants" class="btn-outline">Browse Menus</a>
+  </div>
+</div>
 
-    const list = document.getElementById('restaurants-list');
-    list.innerHTML = data.map(r => `
-      <div class="rest-card" onclick="window.location='menu.html?r=${r.id}'">
-        <div class="emoji">${r.emoji || '🍽️'}</div>
-        <div class="info">
-          <h3>${r.name}</h3>
-          <p>${r.cuisine || ''}</p>
-          <p style="font-size:0.85rem; margin-top:8px;">Tap to view menu →</p>
+<div class="features">
+  <div class="feature">
+    <div class="feature-icon">📱</div>
+    <h3>QR per restaurant</h3>
+    <p>Each restaurant gets a unique QR code that opens their menu directly — no app needed.</p>
+  </div>
+  <div class="feature">
+    <div class="feature-icon">🍽️</div>
+    <h3>Full digital menu</h3>
+    <p>Beautiful categorised menus with photos, descriptions, prices and allergen info.</p>
+  </div>
+  <div class="feature">
+    <div class="feature-icon">🥽</div>
+    <h3>AR dish viewer</h3>
+    <p>Tap any dish to see a 3D model appear on your table through your phone camera.</p>
+  </div>
+  <div class="feature">
+    <div class="feature-icon">🛒</div>
+    <h3>Order & pay</h3>
+    <p>Guests can add items to cart and place orders directly from the menu.</p>
+  </div>
+</div>
+
+<div class="restaurants-section" id="restaurants">
+  <div class="section-header">
+    <h2>Live Restaurants</h2>
+    <a href="admin.html">+ Add yours →</a>
+  </div>
+  <div class="restaurants-grid" id="restaurants-grid">
+  </div>
+</div>
+
+<footer>
+  <strong>Dish.ify</strong> — Digital dining, reimagined.<br/>
+  <span style="font-size:0.75rem; margin-top:0.5rem; display:block;">Built for GitHub Pages · No server required</span>
+</footer>
+
+<script>
+  const restaurants = JSON.parse(localStorage.getItem('dishify_restaurants') || '[]');
+
+  if (restaurants.length === 0) {
+    const demo = [{
+      id: 'demo-restaurant',
+      name: 'The Grand Table',
+      cuisine: 'Contemporary',
+      emoji: '🍽️',
+      description: 'Fine dining with a modern twist',
+      items: 12,
+      active: true
+    }];
+    localStorage.setItem('dishify_restaurants', JSON.stringify(demo));
+    restaurants.push(...demo);
+  }
+
+  const grid = document.getElementById('restaurants-grid');
+  restaurants.forEach(r => {
+    grid.innerHTML += `
+      <a class="restaurant-card" href="menu.html?r=${r.id}">
+        <div class="card-thumb">${r.emoji || '🍽️'}</div>
+        <div class="card-body">
+          <div class="card-cuisine">${r.cuisine || 'Restaurant'}</div>
+          <div class="card-name">${r.name}</div>
+          <div class="card-meta">
+            <span>${r.items || 0} items</span>
+          </div>
+          <div class="card-badge">${r.active ? '● Open' : '● Closed'}</div>
         </div>
-      </div>
-    `).join('');
-  </script>
+      </a>`;
+  });
+</script>
 </body>
 </html>
