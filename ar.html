@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
+<title>Dishify — View in AR</title>
+<script type="module" src="https://unpkg.com/@google/model-viewer@4.3.1/dist/model-viewer.min.js"></script>
+<style>
+  html,body{margin:0;padding:0;width:100%;height:100%;background:#0b0d10;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;overflow:hidden}
+  model-viewer{width:100%;height:100%}
+
+  .brand{position:fixed;top:20px;left:20px;z-index:5;color:#EDEAE1;font-weight:700;font-size:1.05rem;letter-spacing:.01em;pointer-events:none;text-shadow:0 2px 8px rgba(0,0,0,.5)}
+  .brand b{color:#e2531f}
+
+  .hint{position:fixed;bottom:92px;left:50%;transform:translateX(-50%);z-index:5;color:rgba(237,234,225,.75);font-size:.78rem;text-align:center;pointer-events:none;max-width:280px;line-height:1.5;text-shadow:0 1px 6px rgba(0,0,0,.6)}
+
+  button[slot="ar-button"]{
+    background:#e2531f;color:#0b0d10;border:none;border-radius:30px;
+    padding:15px 32px;font-size:.92rem;font-weight:700;font-family:inherit;cursor:pointer;
+    box-shadow:0 6px 20px rgba(0,0,0,.35);
+  }
+  button[slot="ar-button"]:active{transform:scale(.97)}
+
+  .err{position:fixed;inset:0;z-index:10;display:none;align-items:center;justify-content:center;flex-direction:column;gap:14px;
+    background:rgba(11,13,16,.96);color:#EDEAE1;text-align:center;padding:36px}
+  .err p{color:rgba(237,234,225,.7);font-size:.88rem;line-height:1.6;max-width:320px;margin:0}
+  .err strong{color:#ff9a8a;font-size:1rem}
+</style>
+</head>
+<body>
+
+<div class="brand">DISH<b>ify</b></div>
+<div class="hint">Tap the button below, point at a table, then tap once to place it</div>
+
+<model-viewer
+  id="mv"
+  src="burger.glb"
+  ios-src="burger.usdz"
+  alt="A realistic burger, viewable in augmented reality"
+  ar
+  ar-modes="webxr scene-viewer quick-look"
+  ar-placement="floor"
+  camera-controls
+  auto-rotate
+  rotation-per-second="12deg"
+  shadow-intensity="1"
+  environment-image="neutral"
+  camera-orbit="25deg 78deg auto"
+  min-camera-orbit="auto auto 5%"
+  max-camera-orbit="auto auto 300%"
+>
+  <button slot="ar-button">View in Your Space</button>
+</model-viewer>
+
+<div class="err" id="err">
+  <strong>Couldn't load the model</strong>
+  <p id="errMsg">Make sure burger.glb and burger.usdz are in the same folder as this page, and that it's served over https:// (or localhost) — AR needs a secure connection.</p>
+</div>
+
+<script>
+  const mv = document.getElementById('mv');
+  const err = document.getElementById('err');
+  mv.addEventListener('error', (e) => {
+    console.error('Dishify AR: model-viewer error —', e.detail || e);
+    err.style.display = 'flex';
+  });
+</script>
+
+</body>
+</html>
