@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no"/>
+  <title>AR View — Dishify</title>
+  <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.4.0/model-viewer.min.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-database-compat.js"></script>
+  <link rel="stylesheet" href="tokens.css">
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    body{background:var(--bg);color:var(--text);font-family:var(--font-body);height:100dvh;display:flex;flex-direction:column;overflow:hidden}
+
+    /* TOP BAR */
+    .topbar{display:flex;align-items:center;gap:12px;padding:14px 16px;background:rgba(7,6,4,.95);border-bottom:1px solid rgba(201,168,76,.18);flex-shrink:0}
+    .back-btn{background:rgba(201,168,76,.12);border:1px solid rgba(201,168,76,.35);color:var(--primary);padding:8px 14px;border-radius:4px;font-size:.75rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;cursor:pointer;flex-shrink:0}
+    .item-name{font-family:var(--font-display);font-weight:600;font-size:1.05rem;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+    /* VIEWER */
+    #viewer-wrap{flex:1;position:relative;overflow:hidden}
+    model-viewer{width:100%;height:100%;background-color:var(--bg2);--progress-bar-color:var(--primary);--progress-bar-height:3px}
+
+    /* LOADING */
+    #loading{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;background:var(--bg2);z-index:5;transition:opacity .4s ease}
+    #loading.out{opacity:0;pointer-events:none}
+    .spin{width:40px;height:40px;border:2px solid rgba(201,168,76,.2);border-top-color:var(--primary);border-radius:50%;animation:spin .9s linear infinite}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    .load-txt{font-size:.78rem;letter-spacing:.2em;text-transform:uppercase;color:var(--text-dim)}
+
+    /* ERROR */
+    #error{position:absolute;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:32px;text-align:center;background:var(--bg2);z-index:6}
+    #error.show{display:flex}
+    .err-icon{font-size:2.4rem}
+    .err-msg{font-size:.88rem;color:var(--text-dim);line-height:1.7;white-space:pre-line}
+    .err-back{margin-top:8px;background:rgba(201,168,76,.12);border:1px solid rgba(201,168,76,.35);color:var(--primary);padding:11px 22px;border-radius:4px;font-size:.8rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;cursor:pointer}
+
+    /* BOTTOM BAR */
+    .bottom-bar{flex-shrink:0;padding:14px 16px;background:rgba(7,6,4,.95);border-top:1px solid rgba(201,168,76,.18);display:flex;flex-direction:column;gap:10px}
+    .hint{font-size:.75rem;color:var(--text-dim);text-align:center;line-height:1.6}
+    .controls-row{display:flex;gap:10px}
+    .ar-btn{flex:1;padding:15px;background:var(--primary);color:var(--bg);border:none;border-radius:4px;font-size:.9rem;font-weight:800;letter-spacing:.1em;text-transform:uppercase;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;transition:all .18s ease}
+    .ar-btn:hover{background:#dbb85c;transform:translateY(-1px)}
+    .ar-btn:disabled{opacity:.45;cursor:not-allowed;transform:none}
+    .add-btn{flex:0 0 auto;padding:15px 20px;background:transparent;color:var(--primary);border:1px solid var(--primary);border-radius:4px;font-size:.82rem;font-weight:800;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;white-space:nowrap;transition:all .18s ease}
+    .add-btn:hover{background:var(--primary);color:var(--bg)}
+    .credit{font-size:.64rem;color:var(--text-dim);text-align:center;margin-top:2px}
+    .credit a{color:inherit}
+    </style>
+</head>
+<body>
+
+  <div class="topbar">
+    <button class="back-btn" onclick="goBack()">← Back</button>
+    <div class="item-name" id="item-name">Loading…</div>
+  </div>
+
+  <div id="viewer-wrap">
+    <div id="loading">
+      <div class="spin"></div>
+      <div class="load-txt" id="load-txt">Loading model…</div>
+    </div>
+    <div id="error">
+      <div class="err-icon">⚠️</div>
+      <div class="err-msg" id="err-msg">Something went wrong.</div>
+      <button class="err-back" onclick="goBack()">← Go Back</button>
+    </div>
+    <model-viewer
+      id="mv"
+      camera-controls
+      touch-action="pan-y"
+      auto-rotate
+      auto-rotate-delay="600"
+      rotation-per-second="18deg"
+      ar
+      ar-modes="webxr scene-viewer quick-look"
+      ar-placement="floor"
+      ar-scale="fixed"
+      xr-environment
+      shadow-intensity="1"
+      shadow-softness="1"
+      environment-image="neutral"
+      exposure="1"
+      tone-mapping="commerce"
+      reveal="auto"
+      loading="eager">
+    </model-viewer>
+  </div>
+
+  <div class="bottom-bar">
+    <div class="hint" id="ar-page-hint">Rotate &amp; zoom the model, then tap <strong>View in AR</strong> to place it on your table or floor.</div>
+    <div class="controls-row">
+      <button class="ar-btn" id="ar-btn" onclick="launchAR()" disabled>📷 &nbsp;View in AR</button>
+      <button class="add-btn hidden" id="add-btn">Add</button>
+    </div>
+    <p class="credit hidden" id="model-credit"></p>
+  </div>
+
+  <script>
+    const firebaseConfig={apiKey:"AIzaSyBvfA2VXcrx69iS-3VaCR9lA6mGyn6OicI",authDomain:"dishify-menu.firebaseapp.com",databaseURL:"https://dishify-menu-default-rtdb.firebaseio.com",projectId:"dishify-menu",storageBucket:"dishify-menu.firebasestorage.app",messagingSenderId:"182873179650",appId:"1:182873179650:web:8ff8cf3c04789d9f7b091b"};
+    // Firebase is only needed to look a dish up by venue; ?model= links (the landing-page demo) must work without it.
+    let db=null;
+    try{ firebase.initializeApp(firebaseConfig); db=firebase.database(); }
+    catch(e){ console.warn('Firebase unavailable; venue lookups are off, ?model= links still work.',e); }
+
+    const params=new URLSearchParams(location.search);
+    const rid=params.get('r')||'';
+    const itemName=params.get('item')||'';
+    const modelParam=params.get('model')||'';
+
+    function goBack(){
+      if(rid){
+        if(document.referrer.includes('menu.html')) history.back();
+        else window.location.href='menu.html?r='+encodeURIComponent(rid);
+        return;
+      }
+      // demo / direct-model link (no venue): return to the page that sent the visitor here, else the site root
+      var sameOrigin=false;
+      try{ sameOrigin=!!document.referrer && new URL(document.referrer).origin===location.origin; }catch(e){}
+      window.location.href=sameOrigin?document.referrer:'./';
+    }
+
+    function showError(txt){
+      document.getElementById('loading').classList.add('out');
+      document.getElementById('err-msg').textContent=txt;
+      document.getElementById('error').classList.add('show');
+    }
+
+    function convertModelUrl(url){
+      if(!url) return '';
+      const m1=url.match(/drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)/);
+      if(m1) return 'https://drive.google.com/uc?export=download&id='+m1[1];
+      const m2=url.match(/drive\.google\.com\/open\?id=([a-zA-Z0-9_-]+)/);
+      if(m2) return 'https://drive.google.com/uc?export=download&id='+m2[1];
+      if(url.includes('cloudinary.com')&&!url.includes('fl_attachment'))
+        url=url.replace('/upload/','/upload/fl_attachment/');
+      return url;
+    }
+
+    function setHint(html){ document.getElementById('ar-page-hint').innerHTML=html; }
+
+    async function launchAR(){
+      const mv=document.getElementById('mv');
+      if(!mv) return;
+      // WebXR native (Chrome Android / Safari iOS 17+)
+      if(mv.canActivateAR){ mv.activateAR(); return; }
+      // Android Scene Viewer fallback
+      if(/android/i.test(navigator.userAgent)&&mv.src){
+        window.location.href='intent://arvr.google.com/scene-viewer/1.0?file='+
+          encodeURIComponent(mv.src)+'&mode=ar_preferred&resizable=false'+
+          '#Intent;scheme=https;package=com.google.android.googlequicksearchbox;'+
+          'action=android.intent.action.VIEW;'+
+          'S.browser_fallback_url='+encodeURIComponent(mv.src)+';end;';
+        return;
+      }
+      // iOS Quick Look needs a USDZ (ios-src); this dish doesn't have one yet, so native AR isn't available here
+      if(/iphone|ipad/i.test(navigator.userAgent)){
+        setHint('AR placement needs a USDZ version of this model, which isn\'t available yet — rotate and zoom the 3D preview above in the meantime.');
+        return;
+      }
+      setHint('AR is not supported on this device. Try Chrome on Android or Safari on iOS.');
+    }
+
+    function setupAddButton(modelUrl){
+      const btn=document.getElementById('add-btn');
+      const price=params.get('price'), currency=params.get('currency')||'PKR';
+      // Only shown when the caller (menu.html) sent a price and we know which venue + item to add it back to
+      if(!price||!rid||!itemName){ return; }
+      btn.textContent='Add · '+currency+' '+Number(price).toLocaleString();
+      btn.classList.remove('hidden');
+      btn.onclick=function(){
+        window.location.href='menu.html?r='+encodeURIComponent(rid)+'&add='+encodeURIComponent(itemName);
+      };
+    }
+
+    function setupCredit(modelUrl){
+      // The bundled demo dish is CC BY 4.0; a venue's own uploaded models are that venue's responsibility, so this only applies to the demo asset.
+      if(!/(^|\/)assets\/burger\.glb(\?|$)/.test(modelUrl)) return;
+      const el=document.getElementById('model-credit');
+      el.innerHTML='Model: <a href="https://sketchfab.com/3d-models/burger-realistic-free-18e59d7dbd2243c69f469e0f056f44c4" target="_blank" rel="noopener">"Burger Realistic (Free)"</a> by erebus3d, CC BY 4.0';
+      el.classList.remove('hidden');
+    }
+
+    async function init(){
+      if(!rid&&!modelParam){
+        showError('Missing item info.\nPlease scan the QR code again.');
+        return;
+      }
+
+      const vibeParam=params.get('vibe');
+      if(vibeParam) document.documentElement.setAttribute('data-vibe',vibeParam);
+
+      document.getElementById('item-name').textContent=itemName||'AR Preview';
+
+      let modelUrl='';
+
+      if(modelParam){
+        modelUrl=convertModelUrl(decodeURIComponent(modelParam));
+      }
+
+      if((!modelUrl||!vibeParam)&&rid){
+        try{
+          const snap=await db.ref('restaurants/'+rid).once('value');
+          const restaurant=snap.val();
+          if(restaurant){
+            if(!vibeParam&&restaurant.vibe) document.documentElement.setAttribute('data-vibe',restaurant.vibe);
+            if(!modelUrl&&itemName&&restaurant.menu){
+              const item=Object.values(restaurant.menu).find(i=>i.name===itemName);
+              if(item&&item.model){
+                modelUrl=convertModelUrl(item.model);
+                if(item.emoji) document.getElementById('item-name').textContent=item.emoji+' '+itemName;
+              }
+            }
+          }
+        }catch(e){
+          if(!modelUrl){ showError('Could not connect.\nCheck your internet and try again.'); return; }
+        }
+      }
+
+      if(!modelUrl){
+        showError('No 3D model found for "'+itemName+'".\nAsk the admin to upload a .glb model for this item.');
+        return;
+      }
+
+      const mv=document.getElementById('mv');
+      mv.src=modelUrl;
+      setupAddButton(modelUrl);
+      setupCredit(modelUrl);
+
+      mv.addEventListener('load',function(){
+        document.getElementById('loading').classList.add('out');
+        const arBtn = document.getElementById('ar-btn');
+        arBtn.disabled=false;
+        const isMobile=/android|iphone|ipad/i.test(navigator.userAgent);
+        if(isMobile && mv.canActivateAR){
+          setHint('✅ Model ready! Tap <strong>View in AR</strong> — point at a flat surface, wait for the surface indicator (dots/grid), then tap to place.');
+        } else if(isMobile){
+          setHint('✅ Model ready! Tap <strong>View in AR</strong> to launch AR mode.');
+        }
+        console.log('[AR] model loaded, canActivateAR='+mv.canActivateAR);
+      },{once:true});
+
+      mv.addEventListener('error',function(e){
+        console.error('[AR] model-viewer error',e);
+        showError('Could not load the 3D model.\nThe file may be broken or the link expired.\nAsk the admin to re-upload the model.');
+      },{once:true});
+
+      setTimeout(function(){
+        if(!document.getElementById('loading').classList.contains('out'))
+          document.getElementById('load-txt').textContent='Still loading… (large file)';
+      },7000);
+    }
+
+    init();
+  </script>
+</body>
+</html>

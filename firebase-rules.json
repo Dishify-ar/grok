@@ -1,0 +1,49 @@
+{
+  "rules": {
+
+    "admins": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": false
+      }
+    },
+
+    "owners": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": "auth != null && root.child('admins').child(auth.uid).val() === true"
+      }
+    },
+
+    "restaurants": {
+      ".read": true,
+      "$rid": {
+        ".write": "auth != null && root.child('admins').child(auth.uid).val() === true"
+      }
+    },
+
+    "public_restaurants": {
+      ".read": true,
+      "$rid": {
+        ".write": "auth != null && root.child('admins').child(auth.uid).val() === true"
+      }
+    },
+
+    "orders": {
+      "$rid": {
+        ".read": "auth != null && (root.child('admins').child(auth.uid).val() === true || root.child('owners').child(auth.uid).child('rid').val() === $rid)",
+        ".write": "auth != null && (root.child('admins').child(auth.uid).val() === true || root.child('owners').child(auth.uid).child('rid').val() === $rid)",
+        "$orderId": {
+          ".read": true,
+          ".write": true
+        }
+      }
+    },
+
+    "inquiries": {
+      ".read": "auth != null && root.child('admins').child(auth.uid).val() === true",
+      ".write": true
+    }
+
+  }
+}

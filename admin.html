@@ -1,0 +1,1254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Admin — Dishify</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-database-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+  <!-- compiler.html handles MindAR loading in its own tab -->
+  <style>
+    :root{--gold:#c9a84c;--gold-light:#e8c97a;--gold-dim:rgba(201,168,76,0.12);--ink:#070604;--ink2:#0e0d0a;--ink3:#181510;--cream:#f0e8d5;--cream-dim:rgba(240,232,213,0.55);--green:#4caf7d;--red:#bf4040}
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    :focus-visible{outline:2px solid var(--gold,#c9a84c);outline-offset:2px}
+    :focus:not(:focus-visible){outline:none}
+    body{background:var(--ink);color:var(--cream);font-family:'Outfit',sans-serif;min-height:100vh}
+    #login-screen{position:fixed;inset:0;z-index:1000;background:var(--ink);display:flex;align-items:center;justify-content:center}
+    .login-box{background:var(--ink2);border:1px solid #2a2520;border-radius:8px;padding:60px 50px;width:420px;max-width:90vw;text-align:center}
+    .login-logo{font-family:'Cormorant Garamond',serif;font-size:3rem;font-weight:300;color:var(--gold);letter-spacing:.1em;margin-bottom:8px}
+    .login-sub{font-size:.75rem;letter-spacing:.35em;text-transform:uppercase;color:var(--cream-dim);margin-bottom:40px}
+    .login-label{display:block;text-align:left;font-size:.72rem;letter-spacing:.25em;text-transform:uppercase;color:var(--gold);margin-bottom:8px}
+    .login-input{width:100%;padding:14px 18px;background:#13110d;border:1px solid #3a3020;color:var(--cream);border-radius:3px;font-family:'Outfit',sans-serif;font-size:.95rem;margin-bottom:24px;transition:border-color .2s;outline:none}
+    .login-input:focus{border-color:var(--gold)}
+    .login-btn{width:100%;padding:15px;background:var(--gold);color:var(--ink);border:none;border-radius:3px;font-family:'Outfit',sans-serif;font-weight:600;font-size:.85rem;letter-spacing:.15em;text-transform:uppercase;cursor:pointer;transition:all .18s cubic-bezier(.4,0,.2,1)}
+    .login-btn:hover{background:var(--gold-light)}
+    .login-err{color:var(--red);font-size:.82rem;margin-top:14px;display:none}
+    #admin-app{display:none}
+    .sidebar{width:260px;background:var(--ink2);border-right:1px solid #2a2520;position:fixed;top:0;left:0;height:100vh;display:flex;flex-direction:column;z-index:50;overflow-y:auto}
+    .sidebar-logo{font-family:'Cormorant Garamond',serif;font-size:1.8rem;font-weight:300;color:var(--gold);padding:32px 30px 8px;letter-spacing:.1em}
+    .sidebar-role{font-size:.65rem;letter-spacing:.35em;color:var(--cream-dim);text-transform:uppercase;padding:0 30px 28px;border-bottom:1px solid #2a2520}
+    .nav-section{padding:20px 0;flex:1}
+    .nav-label{font-size:.6rem;letter-spacing:.4em;text-transform:uppercase;color:var(--cream-dim);padding:10px 30px 6px}
+    .nav-item{display:flex;align-items:center;gap:12px;padding:13px 30px;color:#888;cursor:pointer;transition:all .16s cubic-bezier(.4,0,.2,1);font-size:.88rem;border-left:3px solid transparent}
+    .nav-item:hover{color:var(--cream);background:rgba(255,255,255,.03)}
+    .nav-item.active{color:var(--gold);background:var(--gold-dim);border-left-color:var(--gold)}
+    .sidebar-footer{padding:20px 30px;border-top:1px solid #2a2520}
+    .logout-btn{width:100%;padding:10px;background:transparent;border:1px solid #3a3020;color:var(--cream-dim);border-radius:3px;font-family:'Outfit',sans-serif;font-size:.78rem;letter-spacing:.15em;text-transform:uppercase;cursor:pointer;transition:all .16s cubic-bezier(.4,0,.2,1)}
+    .logout-btn:hover{border-color:var(--red);color:var(--red)}
+    .main{margin-left:260px;padding:48px;min-height:100vh}
+    .page-title{font-family:'Cormorant Garamond',serif;font-size:2.4rem;font-weight:300;color:var(--cream);margin-bottom:4px}
+    .page-subtitle{font-size:.78rem;color:var(--cream-dim);letter-spacing:.05em;margin-bottom:36px}
+    .panel{display:none;animation:fadeIn .22s cubic-bezier(.16,1,.3,1)}
+    .panel.active{display:block}
+    @keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+    .card{background:var(--ink2);border:1px solid #2a2520;border-radius:6px;padding:30px;margin-bottom:22px}
+    .card-title{font-family:'Cormorant Garamond',serif;font-size:1.2rem;font-weight:400;color:var(--gold);margin-bottom:18px;display:flex;align-items:center;gap:10px}
+    .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+    .grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:18px}
+    label{display:block;font-size:.68rem;letter-spacing:.25em;text-transform:uppercase;color:var(--gold);margin-bottom:6px}
+    input,select,textarea{width:100%;padding:11px 15px;background:#13110d;border:1px solid #3a3020;color:var(--cream);border-radius:3px;font-family:'Outfit',sans-serif;font-size:.9rem;transition:border-color .2s;outline:none}
+    input:focus,select:focus,textarea:focus{border-color:var(--gold)}
+    select option{background:#13110d}
+    textarea{resize:vertical;min-height:80px}
+    .form-group{margin-bottom:16px}
+    .checkbox-row{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+    .checkbox-row input[type=checkbox]{width:auto;accent-color:var(--gold)}
+    .checkbox-row label{margin:0;font-size:.8rem;text-transform:none;letter-spacing:0;color:var(--cream-dim)}
+    .btn{padding:11px 24px;border:none;border-radius:3px;font-family:'Outfit',sans-serif;font-weight:600;font-size:.82rem;letter-spacing:.12em;text-transform:uppercase;cursor:pointer;transition:all .16s cubic-bezier(.4,0,.2,1)}
+    .btn-gold{background:var(--gold);color:var(--ink)}
+    .btn-gold:hover{background:var(--gold-light);transform:translateY(-1px);box-shadow:0 6px 20px rgba(201,168,76,.25)}
+    .btn-outline{background:transparent;border:1px solid #3a3020;color:var(--cream-dim)}
+    .btn-outline:hover{border-color:var(--gold);color:var(--gold)}
+    .btn-blue{background:transparent;border:1px solid rgba(96,168,255,.4);color:#60a8ff;font-size:.72rem;padding:6px 14px}
+    .btn-blue:hover{background:rgba(96,168,255,.1)}
+    .btn-red{background:transparent;border:1px solid rgba(191,64,64,.4);color:var(--red);font-size:.72rem;padding:6px 14px}
+    .btn-red:hover{background:rgba(191,64,64,.1)}
+    .btn-sm{padding:7px 14px;font-size:.72rem}
+    table{width:100%;border-collapse:collapse}
+    th{text-align:left;font-size:.63rem;letter-spacing:.3em;text-transform:uppercase;color:var(--gold);border-bottom:1px solid #2a2520;padding:10px 14px;font-weight:500}
+    td{padding:12px 14px;border-bottom:1px solid #1a1810;font-size:.86rem;color:var(--cream-dim);vertical-align:middle}
+    tbody tr:hover td{background:rgba(201,168,76,.03);color:var(--cream)}
+    .empty-row td{text-align:center;padding:40px;font-style:italic}
+    .qr-wrap{background:white;padding:16px;border-radius:8px;width:fit-content;margin:24px 0}
+    .qr-url{font-size:.72rem;color:var(--cream-dim);word-break:break-all;margin-top:12px;padding:10px 14px;background:#13110d;border-radius:3px;border:1px solid #2a2520}
+    .stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:18px;margin-bottom:28px}
+    .stat-card{background:var(--ink2);border:1px solid #2a2520;border-radius:6px;padding:26px}
+    .stat-val{font-family:'Cormorant Garamond',serif;font-size:3rem;font-weight:300;color:var(--gold);line-height:1}
+    .stat-label{font-size:.68rem;letter-spacing:.3em;text-transform:uppercase;color:var(--cream-dim);margin-top:6px}
+    .vibe-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:6px}
+    .vibe-pill{padding:10px 8px;background:#13110d;border:1px solid #3a3020;border-radius:4px;text-align:center;cursor:pointer;font-size:.75rem;color:var(--cream-dim);transition:all .15s ease}
+    .vibe-pill:hover{border-color:#4a4030;color:var(--cream)}
+    .vibe-pill.selected{border-color:var(--gold);background:var(--gold-dim);color:var(--gold)}
+    .vibe-pill .vi{display:block;font-size:1.3rem;margin-bottom:4px}
+    .info-box{background:rgba(201,168,76,.06);border:1px solid rgba(201,168,76,.2);border-radius:4px;padding:14px 18px;margin-bottom:16px;font-size:.8rem;color:var(--cream-dim);line-height:1.7}
+    .info-box strong{color:var(--gold)}
+    .seed-banner{background:rgba(201,168,76,.08);border:1px solid rgba(201,168,76,.25);border-radius:6px;padding:18px 22px;margin-bottom:28px;display:flex;align-items:center;justify-content:space-between;gap:20px}
+    .seed-banner p{font-size:.85rem;color:var(--cream-dim);line-height:1.5}
+    .rest-stats-block{background:var(--ink2);border:1px solid #2a2520;border-radius:6px;padding:22px;margin-bottom:14px}
+    .rest-stat-pills{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px}
+    .rpill{padding:5px 12px;background:#13110d;border:1px solid #2a2520;border-radius:2px;font-size:.72rem;color:var(--cream-dim)}
+    .rpill span{color:var(--gold);font-weight:600}
+    .img-preview{width:64px;height:48px;object-fit:cover;border-radius:3px;border:1px solid #3a3020;margin-top:6px;display:none}
+    /* ── FILE UPLOAD ZONES ── */
+    .upload-zone{border:2px dashed #3a3020;border-radius:5px;padding:22px 18px;text-align:center;cursor:pointer;transition:all .16s cubic-bezier(.4,0,.2,1);position:relative;background:#0d0b08}
+    .upload-zone:hover,.upload-zone.dragover{border-color:var(--gold);background:var(--gold-dim);box-shadow:0 0 0 4px rgba(201,168,76,.08)}
+    .upload-zone-icon{font-size:1.8rem;display:block;margin-bottom:6px}
+    .upload-zone-label strong{color:var(--gold);display:block;font-size:.88rem;font-weight:600;margin-bottom:4px;letter-spacing:.02em}
+    .upload-zone-label{font-size:.8rem;color:var(--cream-dim);line-height:1.4}
+    .upload-zone-hint{font-size:.7rem;color:#555;margin-top:5px}
+    .upload-bar-wrap{background:#1a1815;border-radius:3px;height:4px;overflow:hidden;margin-top:10px;display:none}
+    .upload-bar{height:100%;background:linear-gradient(90deg,var(--gold),var(--gold-light));width:0%;transition:width .25s cubic-bezier(.4,0,.2,1);border-radius:3px;box-shadow:0 0 8px rgba(201,168,76,.4)}
+    .upload-status{font-size:.76rem;color:var(--cream-dim);margin-top:8px;display:none;padding:8px 12px;background:rgba(240,232,213,.04);border-radius:4px;border:1px solid rgba(240,232,213,.08)}
+    .upload-ok{margin-top:8px;padding:8px 12px;background:rgba(76,175,125,.08);border:1px solid rgba(76,175,125,.3);border-radius:3px;font-size:.76rem;color:#4caf7d;display:none;word-break:break-all}
+    .upload-thumb{width:64px;height:48px;object-fit:cover;border-radius:3px;border:1px solid #3a3020;display:none;margin-top:8px}
+    .curr-asset{display:none;align-items:center;gap:8px;margin-bottom:8px;font-size:.76rem;color:var(--cream-dim)}
+    .curr-asset img{width:56px;height:42px;object-fit:cover;border-radius:3px;border:1px solid #3a3020}
+
+    /* EDIT MODAL */
+    .modal-overlay{position:fixed;inset:0;z-index:500;background:rgba(0,0,0,.8);backdrop-filter:blur(12px);display:none;align-items:center;justify-content:center;padding:20px}
+    .modal-overlay.open{display:flex}
+    .modal-box{background:var(--ink2);border:1px solid var(--gold);border-radius:8px;padding:40px;width:640px;max-width:96vw;max-height:90vh;overflow-y:auto}
+    .modal-title{font-family:'Cormorant Garamond',serif;font-size:1.6rem;color:var(--gold);margin-bottom:6px}
+    .modal-sub{font-size:.78rem;color:var(--cream-dim);margin-bottom:24px}
+    .modal-btns{display:flex;gap:10px;margin-top:20px;flex-wrap:wrap}
+    /* INQUIRIES */
+    .inq-card{background:var(--ink2);border:1px solid #2a2520;border-radius:6px;padding:20px;margin-bottom:12px}
+    .inq-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px}
+    .inq-name{font-family:'Cormorant Garamond',serif;font-size:1.1rem;color:var(--cream)}
+    .inq-type{font-size:.62rem;letter-spacing:.2em;text-transform:uppercase;padding:3px 10px;border:1px solid var(--gold-dim);color:var(--gold);border-radius:2px}
+    .inq-meta{font-size:.75rem;color:var(--cream-dim);margin-bottom:8px}
+    .inq-msg{font-size:.84rem;color:var(--cream-dim);line-height:1.65}
+    .toast{position:fixed;bottom:30px;right:30px;background:var(--ink3);border:1px solid var(--gold);color:var(--cream);padding:14px 22px;border-radius:4px;font-size:.85rem;z-index:2000;animation:toastSlide .3s ease}
+    @keyframes toastSlide{from{opacity:0;transform:translateX(20px)}to{opacity:1;transform:translateX(0)}}
+    
+    /* ── PERFORMANCE & RENDERING ── */
+    *{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}
+    html{text-rendering:optimizeLegibility}
+    @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important}}
+
+    @media(max-width:900px){.grid-2,.grid-3{grid-template-columns:1fr}.stats-row{grid-template-columns:1fr 1fr}}
+    @media(max-width:700px){
+      /* Layout */
+      .sidebar{display:none}
+      .main{margin-left:0;padding:16px 14px}
+      /* Typography */
+      .page-title{font-size:1.4rem;margin-bottom:2px}
+      .page-subtitle{font-size:.76rem}
+      .card-title{font-size:.88rem}
+      /* Forms */
+      .form-group{margin-bottom:12px}
+      .form-group label{font-size:.68rem;letter-spacing:.18em}
+      input,select,textarea{font-size:.86rem;padding:9px 12px}
+      /* Buttons */
+      .btn{font-size:.74rem;padding:9px 14px;letter-spacing:.08em}
+      .btn-gold,.btn-outline,.btn-danger{font-size:.74rem;padding:9px 14px}
+      /* Stats row */
+      .stats-row{grid-template-columns:1fr 1fr;gap:10px}
+      .stat-card{padding:16px 14px}
+      .stat-val{font-size:1.9rem}
+      .stat-label{font-size:.62rem;letter-spacing:.15em}
+      /* Tables */
+      table{font-size:.76rem}
+      th{font-size:.62rem;padding:8px 8px;letter-spacing:.1em}
+      td{padding:10px 8px}
+      /* Cards */
+      .card{padding:18px 14px}
+      /* Modal boxes */
+      .modal-box{padding:24px 18px;border-radius:6px}
+      .modal-title{font-size:1.3rem}
+      /* QR wrap */
+      .qr-wrap{margin:16px 0}
+      /* Upload zones */
+      .upload-zone{padding:18px 14px}
+      /* Vibe grid */
+      .vibe-grid{grid-template-columns:repeat(3,1fr)}
+      .vibe-pill{padding:8px 4px;font-size:.7rem}
+    }
+
+    .upload-error-msg{display:block;margin-top:8px;padding:10px 14px;background:rgba(191,64,64,.08);border:1px solid rgba(191,64,64,.3);border-radius:4px;font-size:.76rem;color:#e06060;line-height:1.5}
+    .upload-zone-icon{font-size:2rem;display:block;margin-bottom:8px;line-height:1}
+    .upload-zone-label{font-size:.82rem;color:var(--cream-dim);line-height:1.5}
+
+    .sidebar::-webkit-scrollbar{width:4px}
+    .sidebar::-webkit-scrollbar-track{background:transparent}
+    .sidebar::-webkit-scrollbar-thumb{background:rgba(201,168,76,.2);border-radius:2px}
+    .sidebar::-webkit-scrollbar-thumb:hover{background:rgba(201,168,76,.4)}
+    .main{scrollbar-width:thin;scrollbar-color:rgba(201,168,76,.2) transparent}
+  </style>
+</head>
+<body>
+  <div id="login-screen">
+    <div class="login-box">
+      <div class="login-logo">DISHIFY</div>
+      <div class="login-sub">Admin Access</div>
+      <label class="login-label">Email</label>
+      <input class="login-input" type="email" id="admin-email" placeholder="you@dishify.app" autocomplete="username" onkeydown="if(event.key==='Enter')document.getElementById('pwd-input').focus()">
+      <label class="login-label">Password</label>
+      <input class="login-input" type="password" id="pwd-input" placeholder="Enter admin password" autocomplete="current-password" onkeydown="if(event.key==='Enter')login()">
+      <button class="login-btn" id="login-btn" onclick="login()">Unlock Dashboard</button>
+      <div class="login-err" id="login-err">Incorrect email or password.</div>
+    </div>
+  </div>
+
+  <!-- EDIT RESTAURANT MODAL -->
+  <div class="modal-overlay" id="edit-rest-modal">
+    <div class="modal-box">
+      <div class="modal-title">Edit Restaurant</div>
+      <div class="modal-sub">Update restaurant details, vibe, photo or owner password.</div>
+      <input type="hidden" id="er-key">
+      <div class="grid-2">
+        <div class="form-group"><label>Restaurant Name</label><input id="er-name" placeholder="Casa Bella"></div>
+        <div class="form-group"><label>Emoji</label><input id="er-emoji" placeholder="🍕"></div>
+        <div class="form-group"><label>Cuisine</label>
+          <select id="er-cuisine">
+            <option value="Italian">Italian</option><option value="Pakistani">Pakistani</option><option value="Japanese">Japanese</option><option value="American">American</option><option value="Chinese">Chinese</option><option value="Mexican">Mexican</option><option value="Turkish">Turkish</option><option value="Thai">Thai</option><option value="Mediterranean">Mediterranean</option><option value="Cafe">Cafe / Bakery</option><option value="Other">Other</option>
+          </select>
+        </div>
+        <div class="form-group"><label>Description</label><input id="er-desc" placeholder="Short tagline…"></div>
+      </div>
+      <div class="form-group">
+        <label>Restaurant Photo <span style="text-transform:none;letter-spacing:0;color:var(--cream-dim);font-size:.7rem">— upload new to replace</span></label>
+        <div id="er-curr" class="curr-asset" style="display:none">
+          <img id="er-curr-img" src="" alt="current photo">
+          <span>Current photo</span>
+        </div>
+        <label class="upload-zone" for="erp-file" style="cursor:pointer">
+          <input type="file" id="erp-file" accept="image/*" style="display:none" onchange="doUpload(this,'erp','image')">
+          <span class="upload-zone-icon">🖼️</span>
+          <div class="upload-zone-label"><strong>Click or drag &amp; drop photo</strong>JPG, PNG, WebP · max 5 MB</div>
+        </label>
+        <div class="upload-bar-wrap" id="erp-bar-wrap"><div class="upload-bar" id="erp-bar"></div></div>
+        <div class="upload-status" id="erp-status"></div>
+        <div class="upload-ok" id="erp-ok"></div>
+        <img class="upload-thumb" id="erp-thumb" alt="">
+        <input type="hidden" id="erp-url">
+      </div>
+      <div class="form-group">
+        <label>Vibe</label>
+        <div class="vibe-grid" id="er-vibe-grid">
+          <div class="vibe-pill" data-vibe="elegant" onclick="selVibeEdit('elegant',this)"><span class="vi">🕯️</span>Elegant</div>
+          <div class="vibe-pill" data-vibe="playful" onclick="selVibeEdit('playful',this)"><span class="vi">🎉</span>Playful</div>
+          <div class="vibe-pill" data-vibe="rustic" onclick="selVibeEdit('rustic',this)"><span class="vi">🪵</span>Rustic</div>
+          <div class="vibe-pill" data-vibe="modern" onclick="selVibeEdit('modern',this)"><span class="vi">🔷</span>Modern</div>
+          <div class="vibe-pill" data-vibe="vibrant" onclick="selVibeEdit('vibrant',this)"><span class="vi">🌶️</span>Vibrant</div>
+          <div class="vibe-pill" data-vibe="zen" onclick="selVibeEdit('zen',this)"><span class="vi">🍃</span>Zen</div>
+          <div class="vibe-pill" data-vibe="retro" onclick="selVibeEdit('retro',this)"><span class="vi">🎸</span>Retro</div>
+          <div class="vibe-pill" data-vibe="luxury" onclick="selVibeEdit('luxury',this)"><span class="vi">💎</span>Luxury</div>
+          <div class="vibe-pill" data-vibe="coastal" onclick="selVibeEdit('coastal',this)"><span class="vi">🌊</span>Coastal</div>
+        </div>
+        <input type="hidden" id="er-vibe">
+      </div>
+      <div class="grid-2">
+        <div class="form-group"><label>Owner Name / Contact</label><input id="er-owner" placeholder="Ahmad Khan · +92-300-…"></div>
+        <div class="form-group"><label>Owner Email</label><input id="er-owner-email" disabled placeholder="—"><p style="font-size:.7rem;color:var(--cream-dim);margin-top:6px;line-height:1.5">Sign-in email and password are now handled by the owner's own Firebase Auth account and can't be changed from here. Reset a forgotten password from the Firebase console, or ask the owner to use "Forgot password" on their login screen once that's wired up.</p></div>
+        <div class="form-group"><label style="display:flex;align-items:center;gap:8px;cursor:pointer"><input type="checkbox" id="er-demo" style="width:auto"> Feature as the public demo venue</label></div>
+      </div>
+      <div class="modal-btns">
+        <button class="btn btn-gold" onclick="saveRestaurant()">Save Changes</button>
+        <button class="btn btn-outline" onclick="closeModal('edit-rest-modal')">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- EDIT MENU ITEM MODAL -->
+  <div class="modal-overlay" id="edit-item-modal">
+    <div class="modal-box">
+      <div class="modal-title">Edit Menu Item</div>
+      <div class="modal-sub">Update item details, photo, AR model or tags.</div>
+      <input type="hidden" id="ei-rid">
+      <input type="hidden" id="ei-key">
+      <div class="grid-3">
+        <div class="form-group"><label>Item Name</label><input id="ei-name" placeholder="Margherita Pizza"></div>
+        <div class="form-group"><label>Category</label><input id="ei-cat" placeholder="Mains"></div>
+        <div class="form-group"><label>Price (PKR)</label><input type="number" id="ei-price"></div>
+      </div>
+      <div class="form-group"><label>Emoji</label><input id="ei-emoji" placeholder="🍕" style="max-width:120px"></div>
+      <div class="form-group">
+        <label>Dish Photo <span style="text-transform:none;letter-spacing:0;color:var(--cream-dim);font-size:.7rem">— upload new to replace</span></label>
+        <div id="eip-curr" style="display:none;align-items:center;gap:8px;margin-bottom:8px;font-size:.76rem;color:var(--cream-dim)">
+          <img id="eip-curr-img" style="width:56px;height:42px;object-fit:cover;border-radius:3px;border:1px solid #3a3020" src="" alt="">
+          <span>Current photo</span>
+        </div>
+        <label class="upload-zone" for="eip-file" style="cursor:pointer">
+          <input type="file" id="eip-file" accept="image/*" style="display:none" onchange="doUpload(this,'eip','image')">
+          <span class="upload-zone-icon">📸</span>
+          <div class="upload-zone-label"><strong>Click or drop dish photo</strong>JPG, PNG, WebP</div>
+        </label>
+        <div class="upload-bar-wrap" id="eip-bar-wrap"><div class="upload-bar" id="eip-bar"></div></div>
+        <div class="upload-status" id="eip-status"></div>
+        <div class="upload-ok" id="eip-ok"></div>
+        <input type="hidden" id="eip-url">
+      </div>
+      <div class="form-group">
+        <label>AR 3D Model <span style="text-transform:none;letter-spacing:0;color:var(--cream-dim);font-size:.7rem">— upload .glb to replace</span></label>
+        <div id="eim-curr" style="display:none;font-size:.76rem;color:#4caf7d;margin-bottom:8px">✦ AR model currently set</div>
+        <label class="upload-zone" for="eim-file" style="cursor:pointer">
+          <input type="file" id="eim-file" accept=".glb,.gltf" style="display:none" onchange="doUpload(this,'eim','glb')">
+          <span class="upload-zone-icon">🥽</span>
+          <div class="upload-zone-label"><strong>Click or drop .glb model</strong>.glb / .gltf</div>
+        </label>
+        <div class="upload-bar-wrap" id="eim-bar-wrap"><div class="upload-bar" id="eim-bar"></div></div>
+        <div class="upload-status" id="eim-status"></div>
+        <div class="upload-ok" id="eim-ok"></div>
+        <input type="hidden" id="eim-url">
+      </div>
+      <div class="form-group"><label>Description</label><textarea id="ei-desc" placeholder="Describe the dish…"></textarea></div>
+      <div style="display:flex;gap:20px;flex-wrap:wrap;margin-bottom:8px">
+        <div class="checkbox-row"><input type="checkbox" id="ei-spicy"><label for="ei-spicy">🌶 Spicy</label></div>
+        <div class="checkbox-row"><input type="checkbox" id="ei-veg"><label for="ei-veg">🌿 Vegetarian</label></div>
+        <div class="checkbox-row"><input type="checkbox" id="ei-new"><label for="ei-new">✨ New Item</label></div>
+        <div class="checkbox-row"><input type="checkbox" id="ei-featured"><label for="ei-featured">⭐ Chef's Pick</label></div>
+      </div>
+      <div class="modal-btns">
+        <button class="btn btn-gold" onclick="saveMenuItem()">Save Changes</button>
+        <button class="btn btn-outline" onclick="closeModal('edit-item-modal')">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="admin-app">
+    <div class="sidebar">
+      <div><div class="sidebar-logo">DISHIFY</div><div class="sidebar-role">✦ Admin Dashboard</div></div>
+      <div class="nav-section">
+        <div class="nav-label">Overview</div>
+        <div class="nav-item active" onclick="showPanel('dashboard',this)"><span>📊</span> Dashboard</div>
+        <div class="nav-label">Manage</div>
+        <div class="nav-item" onclick="showPanel('restaurants',this)"><span>🏢</span> Restaurants</div>
+        <div class="nav-item" onclick="showPanel('menu',this)"><span>🍽️</span> Menu Editor</div>
+        <div class="nav-item" onclick="showPanel('qr',this)"><span>📱</span> QR Codes</div>
+        <div class="nav-label">Analytics</div>
+        <div class="nav-item" onclick="showPanel('analytics',this)"><span>📈</span> Statistics</div>
+        <div class="nav-item" onclick="showPanel('inquiries',this)"><span>📩</span> Inquiries</div>
+        <div class="nav-label">Live</div>
+        <div class="nav-item" onclick="location.href='owner.html'"><span>🔔</span> Live Orders ↗</div>
+      </div>
+      <div class="sidebar-footer"><button class="logout-btn" onclick="logout()">Sign Out</button></div>
+    </div>
+
+    <div class="main">
+      <!-- DASHBOARD -->
+      <div class="panel active" id="panel-dashboard">
+        <div class="page-title">Dashboard</div>
+        <div class="page-subtitle">Platform overview — all restaurants.</div>
+        <div class="stats-row">
+          <div class="stat-card"><div class="stat-val" id="stat-restaurants">—</div><div class="stat-label">Restaurants</div></div>
+          <div class="stat-card"><div class="stat-val" id="stat-items">—</div><div class="stat-label">Menu Items</div></div>
+          <div class="stat-card"><div class="stat-val" id="stat-ar">—</div><div class="stat-label">AR Models</div></div>
+          <div class="stat-card"><div class="stat-val" id="stat-orders-total">—</div><div class="stat-label">Total Orders</div></div>
+        </div>
+        <div class="stats-row" style="grid-template-columns:repeat(3,1fr)">
+          <div class="stat-card"><div class="stat-val" id="stat-revenue-total" style="font-size:1.8rem">—</div><div class="stat-label">Total Revenue</div></div>
+          <div class="stat-card"><div class="stat-val" id="stat-orders-today">—</div><div class="stat-label">Orders Today</div></div>
+          <div class="stat-card"><div class="stat-val" id="stat-revenue-today" style="font-size:1.8rem">—</div><div class="stat-label">Revenue Today</div></div>
+        </div>
+        <div class="seed-banner" id="seed-banner"><p><strong>No restaurants yet?</strong> Seed with sample data.</p><button class="btn btn-gold" onclick="seedDatabase()">Seed Sample Data</button></div>
+        <div class="card">
+          <div class="card-title">📋 Quick Guide</div>
+          <p style="font-size:.85rem;color:var(--cream-dim);line-height:1.8">
+            1. <strong style="color:var(--gold)">Restaurants</strong> → add name, vibe, upload a photo, set owner password.<br>
+            2. <strong style="color:var(--gold)">Menu Editor</strong> → add items, upload a dish photo and optional .glb AR model directly.<br>
+            3. <strong style="color:var(--gold)">QR Codes</strong> → generate &amp; download table QR codes.<br>
+            4. Owner logs in at <strong style="color:var(--gold)">owner.html</strong> → selects restaurant → enters password → sees live orders.<br>
+            5. <strong style="color:var(--gold)">Inquiries</strong> → view messages from the contact form.
+          </p>
+        </div>
+        <div class="card" style="border-color:rgba(191,64,64,.3);background:rgba(191,64,64,.04)">
+          <div class="card-title" style="color:#e07070">⚠️ Firebase Storage Setup Required for Uploads</div>
+          <p style="font-size:.83rem;color:var(--cream-dim);line-height:1.85">
+            Photo and 3D model uploads will <strong style="color:#e07070">fail silently</strong> until you set Firebase Storage rules to allow writes.<br>
+            Go to your <strong style="color:var(--gold)">Firebase Console → Storage → Rules</strong> and paste:
+          </p>
+          <pre style="background:#0d0b08;border:1px solid #3a3020;border-radius:4px;padding:12px 16px;font-size:.78rem;color:#4caf7d;margin-top:10px;overflow-x:auto;line-height:1.7">rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /{allPaths=**} {
+      allow read, write: if true;
+    }
+  }
+}</pre>
+          <p style="font-size:.76rem;color:#888;margin-top:8px;line-height:1.6">⚠ This allows public access. For production, restrict writes to authenticated admin users.</p>
+        </div>
+      </div>
+
+      <!-- RESTAURANTS -->
+      <div class="panel" id="panel-restaurants">
+        <div class="page-title">Restaurants</div>
+        <div class="page-subtitle">Add, edit and manage venues. Click "Edit" on any row to update details or change the owner password.</div>
+        <div class="card">
+          <div class="card-title">➕ Add New Restaurant</div>
+          <div class="grid-2">
+            <div class="form-group"><label>Restaurant Name *</label><input id="rest-name" placeholder="e.g. Casa Bella"></div>
+            <div class="form-group"><label>Emoji *</label><input id="rest-emoji" placeholder="🍕" style="font-size:1.4rem"></div>
+            <div class="form-group"><label>Cuisine Type</label>
+              <select id="rest-cuisine">
+                <option value="Italian">Italian</option><option value="Pakistani">Pakistani</option><option value="Japanese">Japanese</option><option value="American">American</option><option value="Chinese">Chinese</option><option value="Mexican">Mexican</option><option value="Turkish">Turkish</option><option value="Thai">Thai</option><option value="Mediterranean">Mediterranean</option><option value="Cafe">Cafe / Bakery</option><option value="Other">Other</option>
+              </select>
+            </div>
+            <div class="form-group"><label>Short Description</label><input id="rest-desc" placeholder="Tagline…"></div>
+          </div>
+          <div class="form-group">
+            <label>Restaurant Photo <span style="text-transform:none;letter-spacing:0;color:var(--cream-dim);font-size:.7rem">— upload JPG/PNG directly</span></label>
+            <label class="upload-zone" id="rp-zone" for="rp-file" style="cursor:pointer">
+              <input type="file" id="rp-file" accept="image/*" style="display:none" onchange="doUpload(this,'rp','image')">
+              <span class="upload-zone-icon">🖼️</span>
+              <div class="upload-zone-label"><strong>Click or drag &amp; drop photo</strong>JPG, PNG, WebP · max 5 MB</div>
+            </label>
+            <div class="upload-bar-wrap" id="rp-bar-wrap"><div class="upload-bar" id="rp-bar"></div></div>
+            <div class="upload-status" id="rp-status"></div>
+            <div class="upload-ok" id="rp-ok"></div>
+            <img class="upload-thumb" id="rp-thumb" alt="">
+            <input type="hidden" id="rp-url">
+          </div>
+          <div class="info-box"><strong>🔐 Owner Authentication</strong><br>Set the owner password. The restaurant owner uses this to log into the Orders page. You can change it any time from the Edit button.</div>
+          <div class="grid-2">
+            <div class="form-group"><label>Owner Name / Contact</label><input id="rest-owner" placeholder="Ahmad Khan · +92-300-…"></div>
+            <div class="form-group"><label>Owner Email *</label><input type="email" id="rest-owner-email" placeholder="owner@restaurant.com"></div>
+            <div class="form-group"><label>Temporary Password *</label><input type="password" id="rest-password" placeholder="Min 6 characters — share this with the owner"></div>
+            <div class="form-group"><label style="display:flex;align-items:center;gap:8px;cursor:pointer"><input type="checkbox" id="rest-demo" style="width:auto"> Feature as the public demo venue (its landing-page card links out; others show info only)</label></div>
+          </div>
+          <div class="form-group">
+            <label>Restaurant Vibe * <span style="text-transform:none;letter-spacing:0;font-size:.7rem;color:var(--cream-dim)">(sets the menu page theme)</span></label>
+            <div class="vibe-grid">
+              <div class="vibe-pill" data-vibe="elegant" onclick="selectVibe('elegant',this)"><span class="vi">🕯️</span>Elegant</div>
+              <div class="vibe-pill" data-vibe="playful" onclick="selectVibe('playful',this)"><span class="vi">🎉</span>Playful</div>
+              <div class="vibe-pill" data-vibe="rustic" onclick="selectVibe('rustic',this)"><span class="vi">🪵</span>Rustic</div>
+              <div class="vibe-pill" data-vibe="modern" onclick="selectVibe('modern',this)"><span class="vi">🔷</span>Modern</div>
+              <div class="vibe-pill" data-vibe="vibrant" onclick="selectVibe('vibrant',this)"><span class="vi">🌶️</span>Vibrant</div>
+              <div class="vibe-pill" data-vibe="zen" onclick="selectVibe('zen',this)"><span class="vi">🍃</span>Zen</div>
+              <div class="vibe-pill" data-vibe="retro" onclick="selectVibe('retro',this)"><span class="vi">🎸</span>Retro</div>
+              <div class="vibe-pill" data-vibe="luxury" onclick="selectVibe('luxury',this)"><span class="vi">💎</span>Luxury</div>
+              <div class="vibe-pill" data-vibe="coastal" onclick="selectVibe('coastal',this)"><span class="vi">🌊</span>Coastal</div>
+            </div>
+            <input type="hidden" id="rest-vibe" value="">
+          </div>
+          <button class="btn btn-gold" onclick="addRestaurant()">Save Restaurant</button>
+        </div>
+        <div class="card">
+          <div class="card-title">🏢 Your Restaurants</div>
+          <table><thead><tr><th>Name</th><th>Cuisine</th><th>Vibe</th><th>Owner</th><th>Items</th><th>Actions</th></tr></thead>
+          <tbody id="rest-list-body"><tr class="empty-row"><td colspan="6">No restaurants yet</td></tr></tbody></table>
+        </div>
+      </div>
+
+      <!-- MENU EDITOR -->
+      <div class="panel" id="panel-menu">
+        <div class="page-title">Menu Editor</div>
+        <div class="page-subtitle">Add items with dish photos and optional AR models. Click "Edit" on any item to update it.</div>
+        <div class="card">
+          <div class="card-title">➕ Add Menu Item</div>
+          <div class="form-group"><label>Restaurant</label><select id="menu-rest"></select></div>
+          <div class="grid-3">
+            <div class="form-group"><label>Item Name</label><input id="item-name" placeholder="e.g. Margherita Pizza"></div>
+            <div class="form-group"><label>Category</label><input id="item-cat" placeholder="Starters / Mains…"></div>
+            <div class="form-group"><label>Price (PKR)</label><input type="number" id="item-price" placeholder="850"></div>
+          </div>
+          <div class="form-group"><label>Emoji</label><input id="item-emoji" placeholder="🍕" style="font-size:1.3rem;max-width:120px"></div>
+          <div class="form-group">
+            <label>Dish Photo * <span style="text-transform:none;letter-spacing:0;color:var(--cream-dim);font-size:.7rem">— shown on menu card</span></label>
+            <label class="upload-zone" for="ip-file" style="cursor:pointer">
+              <input type="file" id="ip-file" accept="image/*" style="display:none" onchange="doUpload(this,'ip','image')">
+              <span class="upload-zone-icon">📸</span>
+              <div class="upload-zone-label"><strong>Click or drag &amp; drop dish photo</strong>JPG, PNG, WebP · max 5 MB</div>
+            </label>
+            <div class="upload-bar-wrap" id="ip-bar-wrap"><div class="upload-bar" id="ip-bar"></div></div>
+            <div class="upload-status" id="ip-status"></div>
+            <div class="upload-ok" id="ip-ok"></div>
+            <img class="upload-thumb" id="ip-thumb" alt="">
+            <input type="hidden" id="ip-url">
+          </div>
+          <div class="form-group">
+            <label>AR 3D Model <span style="text-transform:none;letter-spacing:0;color:var(--cream-dim);font-size:.7rem">— optional, upload .glb directly</span></label>
+            <label class="upload-zone" for="im-file" style="cursor:pointer">
+              <input type="file" id="im-file" accept=".glb,.gltf" style="display:none" onchange="doUpload(this,'im','glb')">
+              <span class="upload-zone-icon">🥽</span>
+              <div class="upload-zone-label"><strong>Click or drag &amp; drop .glb 3D model</strong>.glb / .gltf · max 50 MB</div>
+              <div class="upload-zone-hint">Free food models: poly.pizza — download .glb and upload here</div>
+            </label>
+            <div class="upload-bar-wrap" id="im-bar-wrap"><div class="upload-bar" id="im-bar"></div></div>
+            <div class="upload-status" id="im-status"></div>
+            <div class="upload-ok" id="im-ok"></div>
+            <input type="hidden" id="im-url">
+          </div>
+          <div class="form-group"><label>Description</label><textarea id="item-desc" placeholder="Describe the dish…"></textarea></div>
+          <div style="display:flex;gap:20px;flex-wrap:wrap;margin-bottom:18px">
+            <div class="checkbox-row"><input type="checkbox" id="item-spicy"><label for="item-spicy">🌶 Spicy</label></div>
+            <div class="checkbox-row"><input type="checkbox" id="item-veg"><label for="item-veg">🌿 Vegetarian</label></div>
+            <div class="checkbox-row"><input type="checkbox" id="item-new"><label for="item-new">✨ New Item</label></div>
+            <div class="checkbox-row"><input type="checkbox" id="item-featured"><label for="item-featured">⭐ Chef's Pick</label></div>
+          </div>
+          <button class="btn btn-gold" onclick="addMenuItem()">Add to Menu</button>
+        </div>
+        <div class="card">
+          <div class="card-title">🍽️ Current Menu Items</div>
+          <div class="form-group" style="max-width:300px"><label>Filter by Restaurant</label><select id="menu-filter" onchange="filterMenu()"></select></div>
+          <table><thead><tr><th>Item</th><th>Photo</th><th>Category</th><th>Price</th><th>AR</th><th>Tags</th><th>Actions</th></tr></thead>
+          <tbody id="menu-list-body"><tr class="empty-row"><td colspan="7">Select a restaurant</td></tr></tbody></table>
+        </div>
+      </div>
+
+      <!-- QR -->
+      <div class="panel" id="panel-qr">
+        <div class="page-title">QR Codes</div>
+        <div class="page-subtitle">Generate table QR codes for any restaurant. The AR system uses one shared marker — set it up once below.</div>
+
+        <!-- STEP 1: Global AR Marker (one-time setup) -->
+        <div class="card" style="margin-bottom:24px;border-color:rgba(201,168,76,.35)">
+          <div class="card-title">🎯 Step 1 — Global AR Marker <span style="font-size:.7rem;font-weight:400;letter-spacing:0;text-transform:none;color:var(--cream-dim)">(one-time setup for all restaurants)</span></div>
+
+          <!-- Active status badge -->
+          <div id="global-ar-status-wrap" style="display:none;margin-bottom:18px">
+            <div style="display:inline-flex;align-items:center;gap:8px;background:rgba(76,175,125,.08);border:1px solid rgba(76,175,125,.35);border-radius:4px;padding:10px 16px;font-size:.8rem;color:#4caf7d">
+              ✅ Global AR marker is active
+              <span id="global-ar-date" style="color:var(--cream-dim);font-size:.72rem"></span>
+            </div>
+          </div>
+
+          <p style="font-size:.82rem;color:var(--cream-dim);line-height:1.8;max-width:580px;margin-bottom:20px">
+            The marker image below is compiled automatically in your browser and saved directly to Firebase — <strong style="color:var(--gold)">no external tools or file uploads needed.</strong><br>
+            Just click <strong style="color:var(--gold)">Compile &amp; Activate AR</strong> once. All restaurants share this marker.
+          </p>
+
+          <!-- Marker preview + optional custom upload -->
+          <div style="margin-bottom:22px">
+            <div style="font-size:.68rem;letter-spacing:.22em;text-transform:uppercase;color:var(--gold);margin-bottom:12px">AR Marker Image</div>
+            <div style="display:flex;align-items:flex-start;gap:20px;flex-wrap:wrap">
+              <div style="display:flex;flex-direction:column;align-items:center;gap:8px">
+                <canvas id="marker-canvas" width="256" height="256" style="border:3px solid var(--gold);border-radius:4px;background:#fff;flex-shrink:0;display:block"></canvas>
+                <span style="font-size:.66rem;color:var(--cream-dim);letter-spacing:.1em">DEFAULT MARKER</span>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:12px;justify-content:center;max-width:320px">
+                <p style="font-size:.78rem;color:var(--cream-dim);line-height:1.7">This is the shared Dishify AR marker printed on every table card. You can also upload a custom marker image.</p>
+                <!-- Custom image upload -->
+                <div>
+                  <div style="font-size:.68rem;letter-spacing:.18em;text-transform:uppercase;color:var(--gold);margin-bottom:7px">Upload Custom Marker (optional)</div>
+                  <label id="marker-upload-label" style="display:inline-flex;align-items:center;gap:8px;padding:9px 16px;border:1px dashed rgba(201,168,76,.4);border-radius:3px;cursor:pointer;font-size:.76rem;color:var(--cream-dim);transition:all .18s ease" onmouseover="this.style.borderColor='var(--gold)';this.style.color='var(--gold)'" onmouseout="this.style.borderColor='rgba(201,168,76,.4)';this.style.color='var(--cream-dim)'">
+                    📁 Choose Image
+                    <input type="file" id="custom-marker-input" accept="image/*" style="display:none" onchange="loadCustomMarker(this)">
+                  </label>
+                  <div id="custom-marker-name" style="font-size:.7rem;color:var(--cream-dim);margin-top:5px;display:none"></div>
+                </div>
+                <button class="btn btn-outline" onclick="downloadMarker()">⬇ Download Marker PNG</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Compile button — opens dedicated compiler.html in a new tab -->
+          <div style="display:flex;flex-direction:column;gap:12px;max-width:420px">
+            <button id="compile-activate-btn" class="btn btn-gold" onclick="compileAndActivate()" style="font-size:.85rem;padding:13px 24px;letter-spacing:.12em">
+              ⚡ Compile &amp; Activate AR
+            </button>
+            <div style="font-size:.74rem;color:var(--cream-dim);line-height:1.65">
+              Opens a new tab to compile the marker — keep it in the foreground until it closes itself.
+            </div>
+            <div id="compile-result" style="display:none;font-size:.78rem;line-height:1.6"></div>
+          </div>
+        </div>
+
+        <!-- STEP 2: Per-restaurant QR -->
+        <div class="card">
+          <div class="card-title">📱 Step 2 — Generate Restaurant QR Code</div>
+          <div class="form-group" style="max-width:300px"><label>Select Restaurant</label><select id="qr-restaurant" onchange="generateQR()"></select></div>
+          <div class="qr-wrap"><div id="qrcode" style="width:220px;height:220px"></div></div>
+          <div class="qr-url" id="qr-url" style="display:none"></div>
+          <div style="display:flex;gap:12px;margin-top:16px;flex-wrap:wrap">
+            <button class="btn btn-gold" onclick="downloadQR()">Download PNG</button>
+            <button class="btn btn-outline" onclick="copyQRUrl()">Copy URL</button>
+          </div>
+          <p style="font-size:.78rem;color:var(--cream-dim);line-height:1.7;margin-top:14px;max-width:480px">
+            Print this QR and the AR marker on your table card. Guests scan the QR → browse menu → tap 🥽 AR on a dish → point camera at the marker → dish appears in 3D. ✨
+          </p>
+        </div>
+      </div>
+
+      <!-- ANALYTICS -->
+      <div class="panel" id="panel-analytics">
+        <div class="page-title">Platform Analytics</div>
+        <div class="page-subtitle">Full statistics across all restaurants.</div>
+        <div class="stats-row">
+          <div class="stat-card"><div class="stat-val" id="an-total-orders">—</div><div class="stat-label">Total Orders</div></div>
+          <div class="stat-card"><div class="stat-val" id="an-today-orders">—</div><div class="stat-label">Orders Today</div></div>
+          <div class="stat-card"><div class="stat-val" id="an-revenue" style="font-size:1.6rem">—</div><div class="stat-label">Total Revenue</div></div>
+          <div class="stat-card"><div class="stat-val" id="an-revenue-today" style="font-size:1.6rem">—</div><div class="stat-label">Today Revenue</div></div>
+        </div>
+        <div class="stats-row" style="grid-template-columns:repeat(3,1fr)">
+          <div class="stat-card"><div class="stat-val" id="an-new">—</div><div class="stat-label">New Orders Now</div></div>
+          <div class="stat-card"><div class="stat-val" id="an-prep">—</div><div class="stat-label">Preparing Now</div></div>
+          <div class="stat-card"><div class="stat-val" id="an-avg" style="font-size:1.6rem">—</div><div class="stat-label">Avg Order Value</div></div>
+        </div>
+        <div class="card"><div class="card-title">📊 Per Restaurant Breakdown</div><div id="rest-breakdown">Loading…</div></div>
+      </div>
+
+      <!-- INQUIRIES -->
+      <div class="panel" id="panel-inquiries">
+        <div class="page-title">Inquiries</div>
+        <div class="page-subtitle">Contact form submissions from the landing page.</div>
+        <div id="inquiries-list"><p style="color:var(--cream-dim);font-size:.88rem">Loading…</p></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const firebaseConfig={apiKey:"AIzaSyBvfA2VXcrx69iS-3VaCR9lA6mGyn6OicI",authDomain:"dishify-menu.firebaseapp.com",databaseURL:"https://dishify-menu-default-rtdb.firebaseio.com",projectId:"dishify-menu",storageBucket:"dishify-menu.firebasestorage.app",messagingSenderId:"182873179650",appId:"1:182873179650:web:8ff8cf3c04789d9f7b091b"};
+    firebase.initializeApp(firebaseConfig);
+    const db=firebase.database();
+    const auth=firebase.auth();
+    let allRestaurants={}, allOrders={}, selectedVibe='', editVibeValue='';
+
+    // A second, independently-named app instance lets us create an owner's Firebase Auth account
+    // (createUserWithEmailAndPassword) without signing the admin themselves out of the first one.
+    function secondaryAuth(){
+      const name='dishify-owner-creator';
+      const app=firebase.apps.find(a=>a.name===name)||firebase.initializeApp(firebaseConfig,name);
+      return app.auth();
+    }
+
+    function login(){
+      const email=document.getElementById('admin-email').value.trim();
+      const pwd=document.getElementById('pwd-input').value;
+      const btn=document.getElementById('login-btn'), err=document.getElementById('login-err');
+      err.style.display='none';
+      if(!email||!pwd){ err.textContent='Enter your email and password.'; err.style.display='block'; return; }
+      btn.disabled=true; btn.textContent='Checking…';
+      auth.signInWithEmailAndPassword(email,pwd).catch(function(){
+        // onAuthStateChanged (below) does the actual gate check; a failed sign-in lands here directly
+        err.textContent='Incorrect email or password.'; err.style.display='block';
+        btn.disabled=false; btn.textContent='Unlock Dashboard';
+      });
+    }
+    function logout(){ auth.signOut(); }
+
+    // Gate: signed in AND listed under /admins/{uid}. That node is bootstrapped by hand in the
+    // Firebase console (see SETUP.md) — the client never writes to it, so it can't be self-granted.
+    auth.onAuthStateChanged(function(user){
+      const btn=document.getElementById('login-btn'), err=document.getElementById('login-err');
+      if(!user){
+        document.getElementById('login-screen').style.display='flex';
+        document.getElementById('admin-app').style.display='none';
+        if(btn){ btn.disabled=false; btn.textContent='Unlock Dashboard'; }
+        return;
+      }
+      db.ref('admins/'+user.uid).once('value').then(function(snap){
+        if(snap.val()===true){
+          document.getElementById('login-screen').style.display='none';
+          document.getElementById('admin-app').style.display='block';
+          initAdmin();
+        } else {
+          err.textContent='This account is not an admin.'; err.style.display='block';
+          if(btn){ btn.disabled=false; btn.textContent='Unlock Dashboard'; }
+          auth.signOut();
+        }
+      });
+    });
+
+    function showPanel(id,el){
+      document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+      document.getElementById('panel-'+id).classList.add('active');
+      document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+      el.classList.add('active');
+      if(id==='analytics')loadAnalytics();
+      if(id==='inquiries')loadInquiries();
+    }
+
+    function selectVibe(v,el){document.querySelectorAll('.vibe-grid:not(#er-vibe-grid) .vibe-pill').forEach(p=>p.classList.remove('selected'));el.classList.add('selected');selectedVibe=v;document.getElementById('rest-vibe').value=v;}
+    function selVibeEdit(v,el){document.querySelectorAll('#er-vibe-grid .vibe-pill').forEach(p=>p.classList.remove('selected'));el.classList.add('selected');editVibeValue=v;document.getElementById('er-vibe').value=v;}
+
+    function prevImg(inputId,imgId){
+      const url=document.getElementById(inputId).value.trim();
+      const img=document.getElementById(imgId);
+      if(url){img.src=url;img.style.display='block';}else img.style.display='none';
+    }
+
+    let inqInitialized=false;
+    function initAdmin(){
+      db.ref('restaurants').on('value',snap=>{allRestaurants=snap.val()||{};updateAllUI();});
+      db.ref('orders').on('value',snap=>{allOrders=snap.val()||{};updateDashboardOrderStats();});
+      // Real-time inquiry notifications
+      db.ref('inquiries').on('child_added',snap=>{
+        if(!inqInitialized)return;
+        const i=snap.val();
+        showInqNotif(i);
+      });
+      setTimeout(()=>{inqInitialized=true;},2000);
+    }
+    function showInqNotif(i){
+      const n=document.createElement('div');
+      n.style.cssText='position:fixed;top:24px;right:24px;z-index:3000;background:var(--ink3);border:1px solid var(--gold);border-left:4px solid var(--gold);border-radius:6px;padding:16px 20px;max-width:320px;animation:toastSlide .4s ease;cursor:pointer';
+      n.innerHTML=`<div style="font-size:.72rem;letter-spacing:.2em;text-transform:uppercase;color:var(--gold);margin-bottom:4px">📩 New Inquiry</div><div style="font-size:.88rem;color:var(--cream);font-weight:500">${i.name||'Anonymous'}</div><div style="font-size:.78rem;color:var(--cream-dim);margin-top:2px">${i.type||'General'} · ${i.email||''}</div><div style="font-size:.8rem;color:var(--cream-dim);margin-top:6px;line-height:1.5">${(i.message||'').slice(0,80)}${i.message&&i.message.length>80?'…':''}</div>`;
+      n.onclick=()=>{n.remove();document.querySelector('.nav-item[onclick*=inquiries]')?.click();};
+      document.body.appendChild(n);
+      setTimeout(()=>n.remove(),8000);
+    }
+
+    function updateAllUI(){
+      const rCount=Object.keys(allRestaurants).length;
+      let iCount=0,arCount=0;
+      Object.values(allRestaurants).forEach(r=>{if(r.menu)Object.values(r.menu).forEach(item=>{iCount++;if(item.model)arCount++;});});
+      document.getElementById('stat-restaurants').textContent=rCount;
+      document.getElementById('stat-items').textContent=iCount;
+      document.getElementById('stat-ar').textContent=arCount;
+      document.getElementById('seed-banner').style.display=rCount>0?'none':'flex';
+
+      const keys=Object.keys(allRestaurants);
+      const tbody=document.getElementById('rest-list-body');
+      tbody.innerHTML=!keys.length?'<tr class="empty-row"><td colspan="6">No restaurants yet</td></tr>':
+        keys.map(key=>{
+          const r=allRestaurants[key],mc=r.menu?Object.keys(r.menu).length:0;
+          return `<tr>
+            <td><strong style="color:var(--cream)">${r.emoji||''} ${r.name}</strong></td>
+            <td>${r.cuisine||'—'}</td>
+            <td><span style="font-size:.7rem;padding:2px 8px;border:1px solid #3a3020;border-radius:2px">${r.vibe||'—'}</span></td>
+            <td style="font-size:.78rem">${r.ownerName||'—'}</td>
+            <td>${mc}</td>
+            <td style="display:flex;gap:6px;flex-wrap:wrap">
+              <button class="btn btn-blue btn-sm" onclick="openEditRest('${key}')">✏ Edit</button>
+              <a class="btn btn-outline btn-sm" href="menu.html?r=${key}" target="_blank" style="text-decoration:none;font-size:.65rem">Preview</a>
+              <button class="btn btn-red" onclick="deleteRestaurant('${key}','${r.name}')">Delete</button>
+            </td>
+          </tr>`;
+        }).join('');
+
+      const opts='<option value="">Select restaurant…</option>'+keys.map(k=>`<option value="${k}">${allRestaurants[k].emoji||''} ${allRestaurants[k].name}</option>`).join('');
+      ['menu-rest','qr-restaurant','menu-filter'].forEach(id=>{const el=document.getElementById(id);if(el){const prev=el.value;el.innerHTML=opts;if(prev)el.value=prev;}});
+      filterMenu();
+    }
+
+    function updateDashboardOrderStats(){
+      let tot=0,totR=0,tod=0,todR=0;
+      const today=new Date().toDateString();
+      Object.values(allOrders).forEach(ro=>Object.values(ro).forEach(o=>{tot++;totR+=o.total||0;if(new Date(o.timestamp).toDateString()===today){tod++;todR+=o.total||0;}}));
+      document.getElementById('stat-orders-total').textContent=tot;
+      document.getElementById('stat-revenue-total').textContent='PKR '+totR.toLocaleString();
+      document.getElementById('stat-orders-today').textContent=tod;
+      document.getElementById('stat-revenue-today').textContent='PKR '+todR.toLocaleString();
+    }
+
+    // ── OPEN EDIT RESTAURANT MODAL ──
+    function openEditRest(key){
+      const r=allRestaurants[key];
+      document.getElementById('er-key').value=key;
+      document.getElementById('er-name').value=r.name||'';
+      document.getElementById('er-emoji').value=r.emoji||'';
+      document.getElementById('er-cuisine').value=r.cuisine||'Italian';
+      document.getElementById('er-desc').value=r.description||'';
+      const ercurr=document.getElementById('er-curr'),erimg=document.getElementById('er-curr-img');
+      if(r.photo){ercurr.style.display='flex';ercurr.style.alignItems='center';erimg.src=r.photo;}else ercurr.style.display='none';
+      document.getElementById('erp-url').value='';
+      document.getElementById('er-owner').value=r.ownerName||'';
+      document.getElementById('er-owner-email').value=r.ownerEmail||'—';
+      document.getElementById('er-demo').checked=!!r.demo;
+      editVibeValue=r.vibe||'';
+      document.getElementById('er-vibe').value=editVibeValue;
+      document.querySelectorAll('#er-vibe-grid .vibe-pill').forEach(p=>{p.classList.toggle('selected',p.dataset.vibe===editVibeValue);});
+
+      document.getElementById('edit-rest-modal').classList.add('open');
+    }
+
+    function saveRestaurant(){
+      const key=document.getElementById('er-key').value;
+      const name=document.getElementById('er-name').value.trim();
+      if(!name){showToast('Name is required');return;}
+      const newPhoto=document.getElementById('erp-url').value;
+      const updates={name,emoji:document.getElementById('er-emoji').value||'🍽️',cuisine:document.getElementById('er-cuisine').value,description:document.getElementById('er-desc').value,ownerName:document.getElementById('er-owner').value,vibe:document.getElementById('er-vibe').value||editVibeValue,demo:document.getElementById('er-demo').checked};
+      if(newPhoto)updates.photo=newPhoto;
+      db.ref('restaurants/'+key).update(updates).then(()=>{
+        const merged=Object.assign({},allRestaurants[key],updates);
+        return mirrorPublic(key,merged);
+      }).then(()=>{closeModal('edit-rest-modal');showToast('✓ Restaurant updated');});
+    }
+
+    function filterMenu(){
+      const rid=document.getElementById('menu-filter')?.value;
+      const tbody=document.getElementById('menu-list-body');
+      if(!rid){tbody.innerHTML='<tr class="empty-row"><td colspan="7">Select a restaurant above</td></tr>';return;}
+      const r=allRestaurants[rid],menu=r?.menu?Object.entries(r.menu):[];
+      if(!menu.length){tbody.innerHTML='<tr class="empty-row"><td colspan="7">No items yet</td></tr>';return;}
+      tbody.innerHTML=menu.map(([key,item])=>`
+        <tr>
+          <td><span style="margin-right:8px">${item.emoji||''}</span><strong style="color:var(--cream)">${item.name}</strong></td>
+          <td>${item.photo?`<img src="${item.photo}" style="width:48px;height:36px;object-fit:cover;border-radius:3px;border:1px solid #3a3020">`:'<span style="color:#555;font-size:.75rem">No photo</span>'}</td>
+          <td>${item.category||'—'}</td>
+          <td style="color:var(--gold)">PKR ${Number(item.price).toLocaleString()}</td>
+          <td>${item.model?'<span style="color:var(--green);font-size:.75rem">✦ AR</span>':'—'}</td>
+          <td style="font-size:.72rem">${item.spicy?'🌶 ':''}${item.vegetarian?'🌿 ':''}${item.isNew?'✨ ':''}${item.featured?'⭐':''}</td>
+          <td style="display:flex;gap:6px;flex-wrap:wrap">
+            <button class="btn btn-blue btn-sm" onclick="openEditItem('${rid}','${key}')">✏ Edit</button>
+            <button class="btn btn-red" onclick="deleteMenuItem('${rid}','${key}')">Remove</button>
+          </td>
+        </tr>`).join('');
+    }
+
+    function openEditItem(rid,key){
+      const item=allRestaurants[rid]?.menu?.[key];
+      if(!item)return;
+      document.getElementById('ei-rid').value=rid;
+      document.getElementById('ei-key').value=key;
+      document.getElementById('ei-name').value=item.name||'';
+      document.getElementById('ei-cat').value=item.category||'';
+      document.getElementById('ei-price').value=item.price||'';
+      document.getElementById('ei-emoji').value=item.emoji||'';
+      document.getElementById('ei-desc').value=item.desc||'';
+      document.getElementById('ei-spicy').checked=!!item.spicy;
+      document.getElementById('ei-veg').checked=!!item.vegetarian;
+      document.getElementById('ei-new').checked=!!item.isNew;
+      document.getElementById('ei-featured').checked=!!item.featured;
+      document.getElementById('eip-url').value='';
+      document.getElementById('eim-url').value='';
+      const eipCurr=document.getElementById('eip-curr'),eipImg=document.getElementById('eip-curr-img');
+      if(item.photo){eipCurr.style.display='flex';eipCurr.style.alignItems='center';eipImg.src=item.photo;}else eipCurr.style.display='none';
+      const eimCurr=document.getElementById('eim-curr');
+      if(item.model)eimCurr.style.display='block';else eimCurr.style.display='none';
+      document.getElementById('edit-item-modal').classList.add('open');
+    }
+
+    function saveMenuItem(){
+      const rid=document.getElementById('ei-rid').value,key=document.getElementById('ei-key').value;
+      const newPhoto=document.getElementById('eip-url').value;
+      const newModel=document.getElementById('eim-url').value;
+      const updates={
+        name:document.getElementById('ei-name').value.trim(),
+        category:document.getElementById('ei-cat').value||'Mains',
+        price:parseInt(document.getElementById('ei-price').value)||0,
+        emoji:document.getElementById('ei-emoji').value||'🍽️',
+        desc:document.getElementById('ei-desc').value,
+        spicy:document.getElementById('ei-spicy').checked,
+        vegetarian:document.getElementById('ei-veg').checked,
+        isNew:document.getElementById('ei-new').checked,
+        featured:document.getElementById('ei-featured').checked
+      };
+      if(newPhoto)updates.photo=newPhoto;
+      if(newModel){updates.model=newModel;updates.hasAR=true;}
+      db.ref(`restaurants/${rid}/menu/${key}`).update(updates).then(()=>{closeModal('edit-item-modal');showToast('✓ Item updated');filterMenu();});
+    }
+
+    function closeModal(id){document.getElementById(id).classList.remove('open');}
+
+    // Mirrors the public fields of a restaurant into /public_restaurants/{key}, which is all the
+    // landing page reads — it never sees ownerName/uid or anything else in the full /restaurants node.
+    function mirrorPublic(key,r){
+      return db.ref('public_restaurants/'+key).set({
+        name:r.name, emoji:r.emoji||'🍽️', cuisine:r.cuisine||'', description:r.description||'',
+        photo:r.photo||'', vibe:r.vibe||'elegant', demo:!!r.demo
+      });
+    }
+
+    async function addRestaurant(){
+      const name=document.getElementById('rest-name').value.trim();
+      const ownerEmail=document.getElementById('rest-owner-email').value.trim();
+      const password=document.getElementById('rest-password').value;
+      if(!name){showToast('Please enter a restaurant name');return;}
+      if(!ownerEmail){showToast('Enter the owner\'s email');return;}
+      if(!password||password.length<6){showToast('Temporary password must be at least 6 characters');return;}
+      if(!selectedVibe){showToast('Please select a restaurant vibe');return;}
+      const btn=event&&event.target; if(btn) btn.disabled=true;
+      try{
+        // Create the owner's Firebase Auth account on the secondary app instance, so the admin stays signed in here.
+        const sAuth=secondaryAuth();
+        const cred=await sAuth.createUserWithEmailAndPassword(ownerEmail,password);
+        const ownerUid=cred.user.uid;
+        await sAuth.signOut();
+        const rKey=db.ref('restaurants').push().key;
+        const data={name,emoji:document.getElementById('rest-emoji').value||'🍽️',cuisine:document.getElementById('rest-cuisine').value,description:document.getElementById('rest-desc').value,photo:document.getElementById('rp-url').value||'',vibe:selectedVibe,ownerName:document.getElementById('rest-owner').value,ownerEmail,ownerUid,demo:document.getElementById('rest-demo').checked};
+        await db.ref('restaurants/'+rKey).set(data);
+        await db.ref('owners/'+ownerUid+'/rid').set(rKey);
+        await mirrorPublic(rKey,data);
+        ['rest-name','rest-emoji','rest-desc','rest-owner','rest-owner-email','rest-password'].forEach(id=>document.getElementById(id).value='');
+        document.getElementById('rest-demo').checked=false;
+        document.getElementById('rp-url').value='';document.querySelectorAll('.vibe-grid:not(#er-vibe-grid) .vibe-pill').forEach(p=>p.classList.remove('selected'));selectedVibe='';document.getElementById('rest-vibe').value='';document.getElementById('rest-photo-prev').style.display='none';
+        showToast('✓ Restaurant added — send the owner their email + temporary password to log in at owner.html');
+      }catch(e){
+        showToast(e&&e.message?e.message:'Could not create the owner account');
+      }finally{ if(btn) btn.disabled=false; }
+    }
+
+    function deleteRestaurant(key,name){
+      if(!confirm(`Delete "${name}" and all its menu items? This does not delete the owner's login — remove that separately from the Firebase console if needed.`))return;
+      db.ref('restaurants/'+key).remove();
+      db.ref('orders/'+key).remove();
+      db.ref('public_restaurants/'+key).remove();
+      showToast('Restaurant deleted');
+    }
+
+    function addMenuItem(){
+      const rid=document.getElementById('menu-rest').value;
+      if(!rid){showToast('Select a restaurant first');return;}
+      const name=document.getElementById('item-name').value.trim();
+      if(!name){showToast('Enter an item name');return;}
+      const model=document.getElementById('im-url').value||'',photo=document.getElementById('ip-url').value||'';
+      db.ref(`restaurants/${rid}/menu`).push({name,category:document.getElementById('item-cat').value||'Mains',price:parseInt(document.getElementById('item-price').value)||0,emoji:document.getElementById('item-emoji').value||'🍽️',desc:document.getElementById('item-desc').value,photo,model,hasAR:!!model,spicy:document.getElementById('item-spicy').checked,vegetarian:document.getElementById('item-veg').checked,isNew:document.getElementById('item-new').checked,featured:document.getElementById('item-featured').checked})
+      .then(()=>{['item-name','item-cat','item-price','item-emoji','item-desc'].forEach(id=>document.getElementById(id).value='');
+        ['ip-url','im-url'].forEach(id=>document.getElementById(id).value='');['item-spicy','item-veg','item-new','item-featured'].forEach(id=>document.getElementById(id).checked=false);['ip-ok','im-ok','ip-status','im-status'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='none';});
+        ['ip-bar-wrap','im-bar-wrap'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='none';});
+        const t=document.getElementById('ip-thumb');if(t){t.style.display='none';t.src='';}
+        showToast('✓ Item added');});
+    }
+
+    function deleteMenuItem(rid,key){if(!confirm('Remove this menu item?'))return;db.ref(`restaurants/${rid}/menu/${key}`).remove().then(()=>{showToast('Item removed');filterMenu();});}
+
+    function convertModelUrl(url){
+      if(!url)return'';
+      const m1=url.match(/drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)/);if(m1)return`https://drive.google.com/uc?export=download&id=${m1[1]}`;
+      const m2=url.match(/drive\.google\.com\/open\?id=([a-zA-Z0-9_-]+)/);if(m2)return`https://drive.google.com/uc?export=download&id=${m2[1]}`;
+      return url;
+    }
+
+    function previewModelLink(url,prevId){
+      const el=document.getElementById(prevId);if(!url){el.style.display='none';return;}
+      el.style.display='block';
+      if(url.includes('drive.google.com')){el.style.cssText='display:block;margin-top:6px;padding:8px 12px;background:rgba(201,168,76,.06);border:1px solid rgba(201,168,76,.3);border-radius:3px;font-size:.74rem;color:var(--gold)';el.innerHTML='⚠ Drive links may fail due to CORS. Use poly.pizza for reliable AR.';}
+      else if(url.endsWith('.glb')){el.style.cssText='display:block;margin-top:6px;padding:8px 12px;background:rgba(76,175,125,.06);border:1px solid rgba(76,175,125,.3);border-radius:3px;font-size:.74rem;color:#4caf7d';el.innerHTML='✓ Direct .glb URL — will work for AR!';}
+      else{el.style.cssText='display:block;margin-top:6px;padding:8px 12px;background:rgba(191,64,64,.06);border:1px solid rgba(191,64,64,.3);border-radius:3px;font-size:.74rem;color:var(--red)';el.innerHTML='⚠ URL doesn\'t end in .glb — verify this is a 3D model file.';}
+    }
+
+    // generateQR moved to upload section above
+    function downloadQR(){const canvas=document.querySelector('#qrcode canvas'),img=document.querySelector('#qrcode img');if(canvas){const a=document.createElement('a');a.download='dishify-qr.png';a.href=canvas.toDataURL();a.click();}else if(img){const a=document.createElement('a');a.download='dishify-qr.png';a.href=img.src;a.click();}}
+    function copyQRUrl(){const url=document.getElementById('qr-url').textContent;if(url)navigator.clipboard.writeText(url).then(()=>showToast('URL copied!'));}
+
+    function loadAnalytics(){
+      let tot=0,totR=0,tod=0,todR=0,newN=0,prepN=0;
+      const today=new Date().toDateString(),perRest={};
+      Object.entries(allOrders).forEach(([rid,ro])=>{
+        perRest[rid]={total:0,revenue:0,today:0,new:0,prep:0};
+        Object.values(ro).forEach(o=>{tot++;totR+=o.total||0;perRest[rid].total++;perRest[rid].revenue+=o.total||0;if(new Date(o.timestamp).toDateString()===today){tod++;todR+=o.total||0;perRest[rid].today++;}if(o.status==='new'){newN++;perRest[rid].new++;}if(o.status==='preparing'){prepN++;perRest[rid].prep++;}});
+      });
+      const avg=tot?Math.round(totR/tot):0;
+      document.getElementById('an-total-orders').textContent=tot;document.getElementById('an-today-orders').textContent=tod;
+      document.getElementById('an-revenue').textContent='PKR '+totR.toLocaleString();document.getElementById('an-revenue-today').textContent='PKR '+todR.toLocaleString();
+      document.getElementById('an-new').textContent=newN;document.getElementById('an-prep').textContent=prepN;
+      document.getElementById('an-avg').textContent=tot?'PKR '+avg.toLocaleString():'—';
+      const el=document.getElementById('rest-breakdown');
+      if(!Object.keys(allRestaurants).length){el.innerHTML='<p style="color:var(--cream-dim);font-size:.85rem">No restaurants yet.</p>';return;}
+      el.innerHTML=Object.keys(allRestaurants).map(rid=>{
+        const r=allRestaurants[rid],s=perRest[rid]||{total:0,revenue:0,today:0,new:0,prep:0},avgR=s.total?Math.round(s.revenue/s.total):0;
+        return `<div class="rest-stats-block"><div style="display:flex;align-items:center;justify-content:space-between"><strong style="font-family:'Cormorant Garamond',serif;font-size:1.1rem;color:var(--cream)">${r.emoji||''} ${r.name}</strong><span style="font-size:.68rem;color:var(--cream-dim)">${r.cuisine||''} · ${r.vibe||''}</span></div><div class="rest-stat-pills"><div class="rpill">Orders <span>${s.total}</span></div><div class="rpill">Revenue <span>PKR ${s.revenue.toLocaleString()}</span></div><div class="rpill">Today <span>${s.today}</span></div><div class="rpill">Avg <span>${s.total?'PKR '+avgR.toLocaleString():'—'}</span></div><div class="rpill">Live New <span>${s.new}</span></div><div class="rpill">Preparing <span>${s.prep}</span></div><div class="rpill">Items <span>${r.menu?Object.keys(r.menu).length:0}</span></div></div></div>`;
+      }).join('');
+    }
+
+    function loadInquiries(){
+      db.ref('inquiries').orderByChild('timestamp').limitToLast(50).once('value',snap=>{
+        const data=snap.val()||{},el=document.getElementById('inquiries-list');
+        const entries=Object.values(data).reverse();
+        if(!entries.length){el.innerHTML='<p style="color:var(--cream-dim)">No inquiries yet.</p>';return;}
+        el.innerHTML=entries.map(i=>`<div class="inq-card">
+          <div class="inq-header"><div class="inq-name">${i.name||'Anonymous'}</div><div class="inq-type">${i.type||'General'}</div></div>
+          <div class="inq-meta">📧 ${i.email||'—'} &nbsp;·&nbsp; 📱 ${i.phone||'—'} &nbsp;·&nbsp; ${i.timestampStr||''}</div>
+          <div class="inq-msg">${i.message||''}</div>
+        </div>`).join('');
+      });
+    }
+
+    async function seedDatabase(){
+      showToast('Seeding sample data…');
+      const rKey=db.ref('restaurants').push().key;
+      const sampleMenu={
+        [db.ref().push().key]:{name:'Margherita Pizza',category:'Mains',price:950,emoji:'🍕',photo:'https://images.unsplash.com/photo-1574071318508-1cdbab80d002?w=600&q=80',desc:'San Marzano tomatoes, fresh mozzarella, basil on a hand-stretched crust.',model:'https://uploads.poly.pizza/m/d03fKqPIFQ/2.glb',hasAR:true,spicy:false,vegetarian:true},
+        [db.ref().push().key]:{name:'Classic Burger',category:'Mains',price:850,emoji:'🍔',photo:'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=600&q=80',desc:'Juicy beef patty with aged cheddar, crispy lettuce, pickles and secret sauce.',model:'https://uploads.poly.pizza/m/5yFm4LPBTW/3.glb',hasAR:true,spicy:false,vegetarian:false},
+        [db.ref().push().key]:{name:'Truffle Pasta',category:'Mains',price:1200,emoji:'🍝',photo:'https://images.unsplash.com/photo-1621996346565-e3dbc646d9a9?w=600&q=80',desc:'Fresh tagliatelle with black truffle, aged parmesan and velvety cream.',model:'https://uploads.poly.pizza/m/bHlAjqP3AI/2.glb',hasAR:true,spicy:false,vegetarian:true},
+        [db.ref().push().key]:{name:'Burrata Salad',category:'Starters',price:750,emoji:'🥗',photo:'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=600&q=80',desc:'Creamy burrata on heirloom tomatoes, rocket, balsamic reduction.',model:'',hasAR:false,spicy:false,vegetarian:true},
+        [db.ref().push().key]:{name:'Beef Tenderloin',category:'Mains',price:2800,emoji:'🥩',photo:'https://images.unsplash.com/photo-1546833999-b9f581a1996d?w=600&q=80',desc:'200g prime beef tenderloin, truffle jus, seasonal vegetables, pomme purée.',model:'https://uploads.poly.pizza/m/cRbbYnYQfJ/2.glb',hasAR:true,spicy:false,vegetarian:false},
+        [db.ref().push().key]:{name:'Tiramisu',category:'Desserts',price:650,emoji:'🍰',photo:'https://images.unsplash.com/photo-1571877227200-a0d98ea607e9?w=600&q=80',desc:'Classic tiramisu with mascarpone, espresso ladyfingers, cocoa dust.',model:'',hasAR:false,spicy:false,vegetarian:true},
+      };
+      const seedEmail='demo-owner+'+rKey.slice(-6).toLowerCase()+'@dishify.app';
+      const seedPwd='owner'+rKey.slice(-4);
+      try{
+        const sAuth=secondaryAuth();
+        const cred=await sAuth.createUserWithEmailAndPassword(seedEmail,seedPwd);
+        const ownerUid=cred.user.uid;
+        await sAuth.signOut();
+        const data={name:'Casa Bella',emoji:'🍕',cuisine:'Italian',description:'Authentic Italian dining crafted with passion.',vibe:'elegant',ownerName:'Sample Owner',ownerEmail:seedEmail,ownerUid,demo:true,menu:sampleMenu};
+        await db.ref(`restaurants/${rKey}`).set(data);
+        await db.ref('owners/'+ownerUid+'/rid').set(rKey);
+        await mirrorPublic(rKey,data);
+        showToast('✓ Sample restaurant created — owner login: '+seedEmail+' / '+seedPwd);
+      }catch(e){
+        showToast(e&&e.message?e.message:'Could not seed the sample restaurant');
+      }
+    }
+
+    // ─── FILE UPLOAD via Cloudinary (free, no subscription needed) ───
+    // Uses unsigned upload preset — set up once at cloudinary.com (free tier)
+    const CLOUDINARY_CLOUD = 'dycl7qpfi';
+    const CLOUDINARY_PRESET = 'dishify_unsigned';
+    let currentQRDataUrl='',currentQRRid='';
+
+    function doUpload(input,prefix,type){
+      const file=input.files[0];if(!file)return;
+      if(type==='image'&&!file.type.startsWith('image/')){showToast('Select an image file');return;}
+      if(type==='glb'&&!file.name.match(/\.(glb|gltf)$/i)){showToast('Select a .glb or .gltf file');return;}
+      if(type==='image'&&file.size>10*1024*1024){showToast('Image too large — max 10 MB');return;}
+      if(type==='glb'&&file.size>50*1024*1024){showToast('Model too large — max 50 MB. Run it through tools/optimize_glb.py to shrink it first.');return;}
+
+      const barWrap=document.getElementById(prefix+'-bar-wrap');
+      const bar=document.getElementById(prefix+'-bar');
+      const status=document.getElementById(prefix+'-status');
+      const ok=document.getElementById(prefix+'-ok');
+      const urlHidden=document.getElementById(prefix+'-url');
+
+      if(barWrap)barWrap.style.display='block';
+      if(status){status.style.display='block';status.textContent='Uploading '+file.name+'…';}
+      if(ok)ok.style.display='none';
+      if(bar)bar.style.width='5%';
+
+      const formData=new FormData();
+      formData.append('file',file);
+      formData.append('upload_preset',CLOUDINARY_PRESET);
+      formData.append('folder',type==='glb'?'dishify/models':'dishify/photos');
+      // Use raw resource type for .glb files
+      const resourceType=type==='glb'?'raw':'image';
+      const url=`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD}/${resourceType}/upload`;
+
+      const xhr=new XMLHttpRequest();
+      xhr.open('POST',url);
+      xhr.upload.addEventListener('progress',e=>{
+        if(e.lengthComputable){const pct=Math.round(e.loaded/e.total*100);if(bar)bar.style.width=pct+'%';if(status)status.textContent=`Uploading… ${pct}%`;}
+      });
+      xhr.onload=()=>{
+        if(xhr.status===200){
+          const res=JSON.parse(xhr.responseText);
+          const uploadedUrl=res.secure_url;
+          if(bar)bar.style.width='100%';
+          if(status)status.textContent='✓ '+file.name+' uploaded';
+          if(ok){ok.style.display='block';ok.textContent=type==='glb'?'✓ Model ready: '+file.name:'✓ Photo ready: '+file.name;}
+          if(urlHidden)urlHidden.value=uploadedUrl;
+          if(type==='image'){const thumb=document.getElementById(prefix+'-thumb');if(thumb){thumb.src=uploadedUrl;thumb.style.display='block';}}
+          showToast('✓ File uploaded!');
+        } else {
+          const err=JSON.parse(xhr.responseText||'{}');
+          if(status)status.textContent='Upload failed: '+(err.error?.message||xhr.status);
+          showToast('Upload failed — check Cloudinary setup');
+          if(bar)bar.style.width='0%';
+        }
+      };
+      xhr.onerror=()=>{
+        if(status)status.textContent='Network error during upload';
+        showToast('Network error — check connection');
+      };
+      xhr.send(formData);
+    }
+
+    // drag & drop on all upload zones
+    document.addEventListener('DOMContentLoaded',()=>{
+      document.querySelectorAll('.upload-zone').forEach(zone=>{
+        zone.addEventListener('dragover',e=>{e.preventDefault();e.stopPropagation();zone.classList.add('dragover');});
+        zone.addEventListener('dragleave',e=>{if(!zone.contains(e.relatedTarget))zone.classList.remove('dragover');});
+        zone.addEventListener('drop',e=>{
+          e.preventDefault();e.stopPropagation();zone.classList.remove('dragover');
+          if(!e.dataTransfer.files.length)return;
+          const inp=zone.querySelector('input[type=file]');if(!inp)return;
+          const id=inp.id;
+          const prefix=id.replace(/-file$/,'');
+          const type=(id==='im-file'||id==='eim-file')?'glb':'image';
+          try{const dt=new DataTransfer();dt.items.add(e.dataTransfer.files[0]);inp.files=dt.files;}catch(err){}
+          doUpload(inp,prefix,type);
+        });
+      });
+    });
+
+    // ─── QR AR TARGET ───
+    function generateQR(){
+      const rid=document.getElementById('qr-restaurant').value,box=document.getElementById('qrcode'),urlEl=document.getElementById('qr-url');
+      box.innerHTML='';currentQRDataUrl='';currentQRRid='';
+      const btn=document.getElementById('compile-ar-btn');if(btn)btn.disabled=true;
+      const cs=document.getElementById('compile-status');if(cs)cs.style.display='none';
+      if(!rid){urlEl.style.display='none';return;}
+      const base=window.location.href.replace('admin.html','menu.html'),url=base+'?r='+rid;
+      new QRCode(box,{text:url,width:220,height:220,colorDark:'#0e0d0a',colorLight:'#ffffff'});
+      urlEl.textContent=url;urlEl.style.display='block';
+      currentQRRid=rid;
+      setTimeout(()=>{
+        const canvas=box.querySelector('canvas'),img=box.querySelector('img');
+        if(canvas)currentQRDataUrl=canvas.toDataURL('image/png');
+        else if(img)currentQRDataUrl=img.src;
+        if(btn)btn.disabled=!currentQRDataUrl;
+      },350);
+    }
+
+    // ── GLOBAL AR MARKER — draw preview canvas, compile in-browser, save to Firebase ──
+
+    // Holds the image element to compile (default = drawn canvas, or custom upload)
+    let _markerImageEl = null;
+
+    function drawMarkerCanvas(){
+      const canvas = document.getElementById('marker-canvas');
+      if(!canvas) return;
+      const ctx = canvas.getContext('2d');
+      const s = 256;
+      const fr=(x,y,w,h,c='#000')=>{ ctx.fillStyle=c; ctx.fillRect(x,y,w,h); };
+      ctx.fillStyle='#fff'; ctx.fillRect(0,0,s,s);
+      ctx.strokeStyle='#000'; ctx.lineWidth=10; ctx.strokeRect(10,10,236,236);
+      // Corner finders (scaled to 256)
+      fr(20,20,45,45); fr(27,27,30,30,'#fff'); fr(34,34,17,17);
+      fr(191,20,45,45); fr(198,27,30,30,'#fff'); fr(205,34,17,17);
+      fr(20,191,45,45); fr(27,198,30,30,'#fff'); fr(34,205,17,17);
+      // Centre bullseye
+      ctx.beginPath(); ctx.arc(128,128,35,0,Math.PI*2); ctx.fillStyle='#000'; ctx.fill();
+      ctx.beginPath(); ctx.arc(128,128,25,0,Math.PI*2); ctx.fillStyle='#fff'; ctx.fill();
+      ctx.beginPath(); ctx.arc(128,128,15,0,Math.PI*2); ctx.fillStyle='#000'; ctx.fill();
+      // Ticks
+      ctx.strokeStyle='#000'; ctx.lineWidth=5;
+      [[128,77,128,87],[128,169,128,179],[77,128,87,128],[169,128,179,128]].forEach(([x1,y1,x2,y2])=>{
+        ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
+      });
+      // Inner grid
+      [[80,80],[98,80],[149,80],[167,80],[80,98],[167,98],[80,149],[167,149],[80,167],[98,167],[149,167],[167,167]].forEach(([x,y])=>fr(x,y,9,9));
+      // After drawing, create an Image element from the canvas for the compiler
+      const img = new Image();
+      img.src = canvas.toDataURL('image/png');
+      img.onload = () => { _markerImageEl = img; };
+    }
+
+    function loadCustomMarker(input){
+      const file = input.files[0];
+      if(!file) return;
+      const nameEl = document.getElementById('custom-marker-name');
+      nameEl.textContent = '✓ ' + file.name;
+      nameEl.style.display = 'block';
+      const reader = new FileReader();
+      reader.onload = e => {
+        const img = new Image();
+        img.onload = () => {
+          // Draw preview on canvas
+          const canvas = document.getElementById('marker-canvas');
+          const ctx = canvas.getContext('2d');
+          ctx.clearRect(0,0,256,256);
+          const scale = Math.min(256/img.width, 256/img.height);
+          const w = img.width*scale, h = img.height*scale;
+          ctx.fillStyle='#fff'; ctx.fillRect(0,0,256,256);
+          ctx.drawImage(img, (256-w)/2, (256-h)/2, w, h);
+          _markerImageEl = img;
+          _markerImageEl.dataset.source = 'custom';
+
+          // Warn if this looks like a logo (too smooth, not a good AR marker)
+          const resultEl = document.getElementById('compile-result');
+          const isLogo = file.name.toLowerCase().includes('logo') || file.name.toLowerCase().includes('icon') || file.name.toLowerCase().includes('mark');
+          if(isLogo) {
+            resultEl.style.display = 'block';
+            resultEl.innerHTML = '<span style="color:#e0a020">⚠ Warning: Logos make poor AR markers — they have too few unique features for reliable tracking. For best results, use the default Dishify marker or a photo with lots of detail and contrast.</span>';
+          } else {
+            resultEl.style.display = 'none';
+          }
+          showToast('Custom marker loaded — click Compile & Activate');
+        };
+        img.src = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function compileAndActivate(){
+      const btn = document.getElementById('compile-activate-btn');
+      const resultEl = document.getElementById('compile-result');
+      resultEl.style.display = 'none';
+
+      // If a custom marker was uploaded, pass it to the compiler page via sessionStorage
+      // (sessionStorage is shared between same-origin tabs opened via window.open)
+      if (_markerImageEl && _markerImageEl.dataset && _markerImageEl.dataset.source === 'custom') {
+        const tmpCanvas = document.createElement('canvas');
+        tmpCanvas.width = 256; tmpCanvas.height = 256;
+        const ctx = tmpCanvas.getContext('2d');
+        ctx.fillStyle = '#fff'; ctx.fillRect(0,0,256,256);
+        const sc = Math.min(256/_markerImageEl.width, 256/_markerImageEl.height);
+        const w = _markerImageEl.width*sc, h = _markerImageEl.height*sc;
+        ctx.drawImage(_markerImageEl,(256-w)/2,(256-h)/2,w,h);
+        sessionStorage.setItem('dishify_marker_src', tmpCanvas.toDataURL('image/png'));
+      } else {
+        sessionStorage.removeItem('dishify_marker_src');
+      }
+
+      // Open the dedicated compiler page in a new foreground tab
+      const compilerTab = window.open('compiler.html', '_blank');
+      if (!compilerTab) {
+        resultEl.style.display = 'block';
+        resultEl.innerHTML = '<span style="color:#bf4040">⚠ Popup was blocked. Please allow popups for this site and try again.</span>';
+        return;
+      }
+
+      btn.disabled = true;
+      btn.textContent = '⏳ Compiling in new tab…';
+      resultEl.style.display = 'block';
+      resultEl.innerHTML = '<span style="color:var(--cream-dim)">🔄 Compiling in new tab — keep it in the foreground until it finishes.</span>';
+
+      // Listen for success message from compiler tab
+      function onCompilerMessage(e) {
+        if (e.data && e.data.type === 'DISHIFY_COMPILED') {
+          window.removeEventListener('message', onCompilerMessage);
+          btn.disabled = false;
+          btn.textContent = '✅ AR Active!';
+          btn.style.background = '#4caf7d';
+          resultEl.innerHTML = '<span style="color:#4caf7d">✅ AR marker compiled and saved! All restaurants are now live.</span>';
+          showGlobalARStatus();
+          showToast('✓ AR marker is now live!');
+          setTimeout(()=>{ btn.textContent='⚡ Recompile AR'; btn.style.background=''; }, 4000);
+        }
+      }
+      window.addEventListener('message', onCompilerMessage);
+
+      // Fallback: poll Firebase directly in case postMessage doesn't fire
+      // (e.g. user navigated in the compiler tab)
+      const pollInterval = setInterval(async () => {
+        try {
+          const snap = await db.ref('config/globalMindTarget/compiledAt').once('value');
+          const ts = snap.val();
+          if (ts && Date.now() - ts < 120000) { // compiled within last 2 min
+            clearInterval(pollInterval);
+            window.removeEventListener('message', onCompilerMessage);
+            if (btn.disabled) {
+              btn.disabled = false;
+              btn.textContent = '✅ AR Active!';
+              btn.style.background = '#4caf7d';
+              resultEl.innerHTML = '<span style="color:#4caf7d">✅ AR marker compiled and saved! All restaurants are now live.</span>';
+              showGlobalARStatus();
+              showToast('✓ AR marker is now live!');
+              setTimeout(()=>{ btn.textContent='⚡ Recompile AR'; btn.style.background=''; }, 4000);
+            }
+          }
+        } catch(e){}
+      }, 3000);
+
+      // Stop polling after 5 minutes regardless
+      setTimeout(()=>{
+        clearInterval(pollInterval);
+        window.removeEventListener('message', onCompilerMessage);
+        if (btn.disabled) {
+          btn.disabled = false;
+          btn.textContent = '⚡ Compile & Activate AR';
+          btn.style.background = '';
+        }
+      }, 300000);
+    }
+
+        function downloadMarker(){
+      const canvas = document.getElementById('marker-canvas');
+      if(!canvas){ showToast('Marker not ready'); return; }
+      const a = document.createElement('a');
+      a.download = 'dishify_ar_marker.png';
+      a.href = canvas.toDataURL('image/png');
+      a.click();
+    }
+
+    function showGlobalARStatus(){
+      db.ref('config/globalMindTarget').once('value', snap=>{
+        const d = snap.val();
+        const wrap = document.getElementById('global-ar-status-wrap');
+        if(!wrap) return;
+        if(d && d.url){
+          wrap.style.display='block';
+          const dateEl = document.getElementById('global-ar-date');
+          if(dateEl && d.compiledAt) dateEl.textContent='· compiled '+new Date(d.compiledAt).toLocaleDateString('en-PK');
+        } else {
+          wrap.style.display='none';
+        }
+      });
+    }
+
+    document.addEventListener('DOMContentLoaded', ()=>{
+      drawMarkerCanvas();
+      showGlobalARStatus();
+    });
+
+    function showToast(msg){const old=document.querySelector('.toast');if(old)old.remove();const t=document.createElement('div');t.className='toast';t.textContent=msg;document.body.appendChild(t);setTimeout(()=>t.remove(),4000);}
+  </script>
+</body>
+</html>

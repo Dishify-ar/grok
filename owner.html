@@ -1,0 +1,722 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Orders — Dishify</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-database-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+  <style>
+    :root{--gold:#c9a84c;--gold-light:#e8c97a;--gold-dim:rgba(201,168,76,0.12);--ink:#070604;--ink2:#0e0d0a;--ink3:#181510;--cream:#f0e8d5;--cream-dim:rgba(240,232,213,0.55);--green:#4caf7d;--red:#bf4040;--amber:#e0a020}
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    :focus-visible{outline:2px solid var(--gold,#c9a84c);outline-offset:2px}
+    :focus:not(:focus-visible){outline:none}
+    .cursor{width:10px;height:10px;background:var(--gold);border-radius:50%;position:fixed;top:0;left:0;pointer-events:none;z-index:9999;transform:translate(0,0) translate(-50%,-50%);mix-blend-mode:difference;will-change:transform}
+    .cursor-ring{width:36px;height:36px;border:1px solid var(--gold);border-radius:50%;position:fixed;top:0;left:0;pointer-events:none;z-index:9998;transform:translate(0,0) translate(-50%,-50%);opacity:.5;will-change:transform;transition:none}
+    body{background:var(--ink);color:var(--cream);font-family:'Outfit',sans-serif;min-height:100vh}
+
+    /* ── STEP 1: RESTAURANT SELECT ── */
+    #step-select{position:fixed;inset:0;z-index:1000;background:var(--ink);display:flex;align-items:center;justify-content:center;padding:20px}
+    .select-box{background:var(--ink2);border:1px solid #2a2520;border-radius:8px;padding:48px 44px;width:520px;max-width:96vw;text-align:center}
+    .select-logo{font-family:'Cormorant Garamond',serif;font-size:2.5rem;font-weight:300;color:var(--gold);letter-spacing:.1em;margin-bottom:6px}
+    .select-sub{font-size:.68rem;letter-spacing:.4em;text-transform:uppercase;color:var(--cream-dim);margin-bottom:36px}
+    .rest-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:28px;max-height:50vh;overflow-y:auto}
+    .rest-pick-btn{background:#13110d;border:1px solid #3a3020;border-radius:6px;padding:16px 14px;cursor:pointer;text-align:left;transition:all .16s cubic-bezier(.4,0,.2,1);display:flex;align-items:center;gap:12px}
+    .rest-pick-btn:hover{border-color:var(--gold);background:#1a1610}
+    .rest-pick-btn.selected{border-color:var(--gold);background:var(--gold-dim)}
+    .rest-pick-emoji{font-size:1.6rem;flex-shrink:0}
+    .rest-pick-name{font-size:.88rem;font-weight:500;color:var(--cream);line-height:1.2}
+    .rest-pick-cuisine{font-size:.68rem;color:var(--cream-dim);letter-spacing:.08em}
+    .select-next-btn{width:100%;padding:15px;background:var(--gold);color:var(--ink);border:none;border-radius:3px;font-family:'Outfit',sans-serif;font-weight:600;font-size:.85rem;letter-spacing:.15em;text-transform:uppercase;cursor:pointer;transition:all .18s cubic-bezier(.4,0,.2,1);margin-top:8px}
+    .select-next-btn:hover{background:var(--gold-light)}
+    .select-next-btn:disabled{opacity:.4;cursor:not-allowed}
+    .select-loading{color:var(--cream-dim);font-size:.85rem;padding:20px 0}
+
+    /* ── STEP 2: PASSWORD ── */
+    #step-password{position:fixed;inset:0;z-index:1000;background:var(--ink);display:none;align-items:center;justify-content:center;padding:20px}
+    .login-box{background:var(--ink2);border:1px solid #2a2520;border-radius:8px;padding:60px 50px;width:420px;max-width:90vw;text-align:center}
+    .login-logo{font-family:'Cormorant Garamond',serif;font-size:2.5rem;font-weight:300;color:var(--gold);letter-spacing:.1em;margin-bottom:6px}
+    .login-sub{font-size:.68rem;letter-spacing:.4em;text-transform:uppercase;color:var(--cream-dim);margin-bottom:8px}
+    .login-rest-name{font-family:'Cormorant Garamond',serif;font-size:1.3rem;color:var(--cream);margin-bottom:32px}
+    .login-label{display:block;text-align:left;font-size:.68rem;letter-spacing:.25em;text-transform:uppercase;color:var(--gold);margin-bottom:8px}
+    .login-input{width:100%;padding:14px 18px;background:#13110d;border:1px solid #3a3020;color:var(--cream);border-radius:3px;font-family:'Outfit',sans-serif;font-size:.95rem;margin-bottom:20px;transition:border-color .2s}
+    .login-input:focus{outline:none;border-color:var(--gold)}
+    .login-btn{width:100%;padding:15px;background:var(--gold);color:var(--ink);border:none;border-radius:3px;font-family:'Outfit',sans-serif;font-weight:600;font-size:.85rem;letter-spacing:.15em;text-transform:uppercase;cursor:pointer;transition:all .18s cubic-bezier(.4,0,.2,1)}
+    .login-btn:hover{background:var(--gold-light);box-shadow:0 6px 20px rgba(201,168,76,.3);transform:translateY(-1px)}
+    .login-back{background:transparent;border:none;color:var(--cream-dim);font-family:'Outfit',sans-serif;font-size:.78rem;cursor:pointer;margin-top:14px;text-decoration:underline}
+    .login-back:hover{color:var(--gold)}
+    .login-err{color:var(--red);font-size:.82rem;margin-top:12px;height:20px}
+
+    /* ── APP ── */
+    #app{display:none}
+    header{background:var(--ink2);border-bottom:1px solid #2a2520;padding:0 40px;height:70px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50}
+    .header-left{display:flex;align-items:center;gap:16px}
+    .header-logo{font-family:'Cormorant Garamond',serif;font-size:1.6rem;font-weight:300;color:var(--gold);letter-spacing:.1em}
+    .header-rest{font-size:.72rem;letter-spacing:.15em;text-transform:uppercase;color:var(--cream-dim);padding:4px 12px;background:var(--gold-dim);border:1px solid rgba(201,168,76,.2);border-radius:2px}
+    .header-right{display:flex;align-items:center;gap:12px}
+    .live-badge{display:flex;align-items:center;gap:6px;font-size:.7rem;letter-spacing:.2em;text-transform:uppercase;color:var(--green);padding:6px 14px;border:1px solid rgba(76,175,125,.3);border-radius:2px;background:rgba(76,175,125,.05)}
+    .live-dot{width:6px;height:6px;border-radius:50%;background:var(--green);animation:pulse 1.5s ease-in-out infinite}
+    @keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(1.3)}}
+    .icon-btn{padding:8px 16px;background:transparent;border:1px solid #3a3020;color:var(--cream-dim);border-radius:3px;font-family:'Outfit',sans-serif;font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;cursor:pointer;transition:all .16s cubic-bezier(.4,0,.2,1)}
+    .icon-btn:hover{border-color:var(--gold);color:var(--gold)}
+    .logout-btn{padding:8px 18px;background:transparent;border:1px solid #3a3020;color:var(--cream-dim);border-radius:3px;font-family:'Outfit',sans-serif;font-size:.75rem;letter-spacing:.12em;text-transform:uppercase;cursor:pointer;transition:all .16s cubic-bezier(.4,0,.2,1)}
+    .logout-btn:hover{border-color:var(--red);color:var(--red)}
+
+    main{padding:40px;max-width:1400px;margin:0 auto}
+    .page-title{font-family:'Cormorant Garamond',serif;font-size:2.4rem;font-weight:300;color:var(--cream);margin-bottom:4px}
+    .page-subtitle{font-size:.78rem;color:var(--cream-dim);letter-spacing:.05em;margin-bottom:32px}
+
+    /* TABS (for multiple restaurants admin view — shows all) */
+    .rest-tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:32px}
+    .rest-tab{padding:10px 22px;background:var(--ink2);border:1px solid #2a2520;border-radius:3px;color:var(--cream-dim);font-size:.78rem;font-weight:500;letter-spacing:.1em;text-transform:uppercase;cursor:pointer;transition:all .16s cubic-bezier(.4,0,.2,1);display:flex;align-items:center;gap:8px}
+    .rest-tab.active{background:var(--gold-dim);border-color:var(--gold);color:var(--gold)}
+    .rest-tab .badge-new{background:var(--red);color:white;border-radius:50%;width:18px;height:18px;font-size:.65rem;display:flex;align-items:center;justify-content:center;font-weight:700}
+
+    /* STATS */
+    .stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:32px}
+    .stat{background:var(--ink2);border:1px solid #2a2520;border-radius:8px;padding:22px 24px;transition:border-color .15s ease}
+    .stat-val{font-family:'Cormorant Garamond',serif;font-size:2.5rem;font-weight:300;color:var(--gold);line-height:1}
+    .stat-label{font-size:.65rem;letter-spacing:.3em;text-transform:uppercase;color:var(--cream-dim);margin-top:4px}
+
+    /* ORDERS */
+    .orders-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:20px}
+    .order-card{background:var(--ink2);border:1px solid #2a2520;border-radius:8px;padding:24px;position:relative;transition:border-color .18s ease;animation:cardIn .3s cubic-bezier(.16,1,.3,1) both;will-change:transform;contain:layout style}
+    @keyframes cardIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+    .order-card.status-new{border-left:3px solid var(--gold)}
+    .order-card.status-preparing{border-left:3px solid var(--amber)}
+    .order-card.status-ready{border-left:3px solid var(--green)}
+    .order-card.status-done{border-left:3px solid #444;opacity:.6}
+    .order-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px}
+    .order-id{font-size:.68rem;letter-spacing:.25em;text-transform:uppercase;color:var(--cream-dim)}
+    .order-table{font-family:'Cormorant Garamond',serif;font-size:1.4rem;color:var(--cream);margin-top:2px}
+    .order-items-list{margin-bottom:16px;padding-bottom:16px;border-bottom:1px solid #2a2520}
+    .order-line{display:flex;justify-content:space-between;font-size:.85rem;padding:5px 0}
+    .order-line-name{color:var(--cream)}
+    .order-line-qty{color:var(--cream-dim);font-size:.78rem}
+    .order-line-price{color:var(--gold);font-size:.85rem}
+    .order-total-row{display:flex;justify-content:space-between;margin-bottom:16px}
+    .order-total-row span:first-child{font-size:.72rem;letter-spacing:.2em;text-transform:uppercase;color:var(--cream-dim)}
+    .order-total-row span:last-child{font-family:'Cormorant Garamond',serif;font-size:1.2rem;color:var(--gold)}
+    .status-btns{display:flex;gap:8px;flex-wrap:wrap}
+    .status-btn{flex:1;padding:9px 12px;border:none;border-radius:3px;font-family:'Outfit',sans-serif;font-size:.7rem;font-weight:600;letter-spacing:.12em;text-transform:uppercase;cursor:pointer;transition:all .16s cubic-bezier(.4,0,.2,1);min-width:80px}
+    .btn-preparing{background:rgba(224,160,32,.15);border:1px solid rgba(224,160,32,.4);color:var(--amber)}
+    .btn-preparing:hover{background:rgba(224,160,32,.25)}
+    .btn-ready{background:rgba(76,175,125,.12);border:1px solid rgba(76,175,125,.4);color:var(--green)}
+    .btn-ready:hover{background:rgba(76,175,125,.22)}
+    .btn-done{background:#1a1815;border:1px solid #333;color:#666}
+    .btn-done:hover{border-color:#555;color:#888}
+    .status-chip{display:inline-flex;align-items:center;gap:5px;font-size:.65rem;letter-spacing:.2em;text-transform:uppercase;padding:4px 10px;border-radius:2px}
+    .chip-new{color:var(--gold);background:var(--gold-dim);border:1px solid rgba(201,168,76,.25)}
+    .chip-preparing{color:var(--amber);background:rgba(224,160,32,.08);border:1px solid rgba(224,160,32,.25)}
+    .chip-ready{color:var(--green);background:rgba(76,175,125,.08);border:1px solid rgba(76,175,125,.25)}
+    .chip-done{color:#555;background:#111;border:1px solid #222}
+    .empty-orders{text-align:center;padding:80px 40px;color:var(--cream-dim)}
+    .empty-orders h3{font-family:'Cormorant Garamond',serif;font-size:2rem;color:var(--gold);margin-bottom:8px}
+
+    /* PASSWORD CHANGE MODAL */
+    #pwd-modal{position:fixed;inset:0;z-index:500;background:rgba(0,0,0,.7);backdrop-filter:blur(6px);display:none;align-items:center;justify-content:center}
+    #pwd-modal.open{display:flex}
+    .pwd-modal-box{background:var(--ink2);border:1px solid var(--gold);border-radius:8px;padding:48px 40px;width:420px;max-width:90vw}
+    .pwd-modal-title{font-family:'Cormorant Garamond',serif;font-size:1.8rem;color:var(--gold);margin-bottom:6px}
+    .pwd-modal-sub{font-size:.75rem;color:var(--cream-dim);margin-bottom:28px}
+    .pwd-form-label{display:block;font-size:.68rem;letter-spacing:.25em;text-transform:uppercase;color:var(--gold);margin-bottom:6px}
+    .pwd-form-input{width:100%;padding:12px 16px;background:#13110d;border:1px solid #3a3020;color:var(--cream);border-radius:3px;font-family:'Outfit',sans-serif;font-size:.9rem;margin-bottom:16px;transition:border-color .2s}
+    .pwd-form-input:focus{outline:none;border-color:var(--gold)}
+    .pwd-modal-btns{display:flex;gap:10px;margin-top:6px}
+    .btn-gold{padding:12px 24px;background:var(--gold);color:var(--ink);border:none;border-radius:3px;font-family:'Outfit',sans-serif;font-weight:600;font-size:.82rem;letter-spacing:.12em;text-transform:uppercase;cursor:pointer;transition:all .16s cubic-bezier(.4,0,.2,1);flex:1}
+    .btn-gold:hover{background:var(--gold-light)}
+    .btn-cancel{padding:12px 24px;background:transparent;border:1px solid #3a3020;color:var(--cream-dim);border-radius:3px;font-family:'Outfit',sans-serif;font-size:.82rem;letter-spacing:.12em;text-transform:uppercase;cursor:pointer;transition:all .16s cubic-bezier(.4,0,.2,1)}
+    .btn-cancel:hover{border-color:var(--red);color:var(--red)}
+    .pwd-err{color:var(--red);font-size:.8rem;margin-top:8px;height:18px}
+
+    *{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}
+    @media(prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;transition-duration:.01ms!important}}
+    .notif-toast{position:fixed;top:90px;right:24px;background:var(--ink3);border:1px solid var(--gold);border-left:3px solid var(--gold);color:var(--cream);padding:16px 20px;border-radius:4px;font-size:.85rem;z-index:900;animation:slideLeft .4s cubic-bezier(.16,1,.3,1);max-width:300px}
+    @keyframes slideLeft{from{opacity:0;transform:translateX(30px)}to{opacity:1;transform:translateX(0)}}
+    .toast{position:fixed;bottom:30px;right:24px;background:var(--ink3);border:1px solid var(--gold);color:var(--cream);padding:14px 20px;border-radius:4px;font-size:.85rem;z-index:900}
+
+    @media(max-width:900px){.stats-row{grid-template-columns:repeat(2,1fr)}}
+    @media(max-width:600px){
+      /* Header */
+      header{padding:0 14px;height:58px}
+      .header-logo{font-size:1.3rem}
+      .header-rest{font-size:.6rem;padding:3px 8px;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+      .header-right .icon-btn{display:none}
+      .live-badge{font-size:.6rem;padding:4px 8px;gap:4px}
+      .logout-btn{font-size:.68rem;padding:6px 12px}
+      /* Main */
+      main{padding:16px 14px}
+      .page-title{font-size:1.8rem}
+      .page-subtitle{font-size:.74rem}
+      /* Stats */
+      .stats-row{grid-template-columns:1fr 1fr;gap:10px}
+      .stat-card{padding:16px 14px}
+      .stat-val{font-size:1.8rem}
+      .stat-label{font-size:.62rem;letter-spacing:.15em}
+      /* Restaurant select screen */
+      .select-box{padding:32px 20px}
+      .select-logo{font-size:2rem}
+      .rest-grid{grid-template-columns:1fr}
+      .rest-pick-btn{padding:14px 12px}
+      /* Login box */
+      .login-box{padding:40px 24px}
+      /* Orders */
+      .orders-grid{grid-template-columns:1fr}
+      .order-card{padding:18px 14px}
+      .order-id{font-size:.64rem}
+      .order-table{font-size:1.2rem}
+      .order-line{font-size:.82rem}
+      .order-line-price{font-size:.82rem}
+      .order-total-row span:last-child{font-size:1.1rem}
+      .status-btn{font-size:.66rem;padding:8px 8px}
+      /* Tabs */
+      .rest-tabs{gap:6px}
+      .rest-tab{padding:8px 14px;font-size:.7rem}
+      /* Chat */
+      .chat-sessions-grid{grid-template-columns:1fr;height:auto}
+      .chat-session-list{max-height:200px;border-right:none;border-bottom:1px solid #2a2520}
+    }
+
+    /* ── CHAT PANEL (owner side) ── */
+    #chat-section{display:none}
+    .chat-sessions-grid{display:grid;grid-template-columns:280px 1fr;gap:0;height:calc(100vh - 280px);min-height:400px;background:var(--ink2);border:1px solid #2a2520;border-radius:6px;overflow:hidden}
+    .chat-session-list{border-right:1px solid #2a2520;overflow-y:auto}
+    .chat-session-item{padding:14px 18px;border-bottom:1px solid #1a1810;cursor:pointer;transition:background .15s;position:relative}
+    .chat-session-item:hover{background:rgba(201,168,76,.04)}
+    .chat-session-item.active{background:var(--gold-dim);border-left:3px solid var(--gold)}
+    .chat-session-label{font-size:.84rem;color:var(--cream);font-weight:500}
+    .chat-session-preview{font-size:.74rem;color:var(--cream-dim);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .chat-session-time{font-size:.62rem;color:#555;margin-top:2px}
+    .chat-session-badge{position:absolute;top:14px;right:14px;background:var(--red);color:#fff;border-radius:50%;width:18px;height:18px;font-size:.62rem;font-weight:700;display:none;align-items:center;justify-content:center}
+    .chat-window{display:flex;flex-direction:column;background:var(--ink)}
+    .chat-window-header{padding:16px 22px;border-bottom:1px solid #2a2520;font-family:'Cormorant Garamond',serif;font-size:1.1rem;color:var(--gold);flex-shrink:0}
+    .chat-window-msgs{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:8px;scroll-behavior:smooth}
+    .chat-window-msgs::-webkit-scrollbar{width:3px}
+    .chat-window-msgs::-webkit-scrollbar-thumb{background:rgba(201,168,76,.2);border-radius:2px}
+    .owner-chat-msg{max-width:78%;padding:9px 13px;border-radius:10px;font-size:.83rem;line-height:1.5;word-break:break-word}
+    .owner-chat-msg.mine{align-self:flex-end;background:var(--gold);color:var(--ink);border-bottom-right-radius:2px}
+    .owner-chat-msg.theirs{align-self:flex-start;background:var(--ink2);color:var(--cream);border:1px solid #2a2520;border-bottom-left-radius:2px}
+    .owner-chat-msg-time{font-size:.6rem;opacity:.55;margin-top:3px;text-align:right}
+    .chat-window-input{padding:12px 16px;border-top:1px solid #2a2520;display:flex;gap:10px;flex-shrink:0}
+    .chat-window-inp{flex:1;padding:10px 14px;background:#13110d;border:1px solid #3a3020;color:var(--cream);border-radius:8px;font-family:'Outfit',sans-serif;font-size:.88rem;outline:none;transition:border-color .2s}
+    .chat-window-inp:focus{border-color:var(--gold)}
+    .chat-window-send{padding:10px 18px;background:var(--gold);color:var(--ink);border:none;border-radius:8px;font-family:'Outfit',sans-serif;font-weight:600;font-size:.8rem;cursor:pointer;transition:background .15s}
+    .chat-window-send:hover{background:var(--gold-light)}
+    .chat-no-session{flex:1;display:flex;align-items:center;justify-content:center;color:#555;font-size:.85rem;font-style:italic}
+    .chat-empty-list{padding:30px 18px;text-align:center;color:#555;font-size:.82rem}
+  </style>
+</head>
+<body>
+
+  <!-- LOGIN -->
+  <div class="cursor" id="cursor"></div>
+  <div class="cursor-ring" id="cursorRing"></div>
+  <div id="step-password" style="display:flex;align-items:center;justify-content:center;padding:20px;min-height:100vh">
+    <div class="login-box">
+      <div class="login-logo">DISHIFY</div>
+      <div class="login-sub">Restaurant Owner Login</div>
+      <label class="login-label">Email</label>
+      <input class="login-input" type="email" id="owner-email" placeholder="owner@restaurant.com" autocomplete="username" onkeydown="if(event.key==='Enter')document.getElementById('pwd-input').focus()">
+      <label class="login-label">Password</label>
+      <input class="login-input" type="password" id="pwd-input" placeholder="Enter your password" autocomplete="current-password" onkeydown="if(event.key==='Enter')login()">
+      <button class="login-btn" id="login-btn" onclick="login()">View Orders</button>
+      <div class="login-err" id="login-err"></div>
+      <a href="index.html" style="display:inline-block;margin-top:16px;font-size:.75rem;color:var(--cream-dim);text-decoration:none">← Back to Home</a>
+    </div>
+  </div>
+
+  <!-- PASSWORD CHANGE MODAL -->
+  <div id="pwd-modal">
+    <div class="pwd-modal-box">
+      <div class="pwd-modal-title">Change Password</div>
+      <div class="pwd-modal-sub">Update your restaurant's owner password.</div>
+      <label class="pwd-form-label">Current Password</label>
+      <input class="pwd-form-input" type="password" id="pwd-current" placeholder="Current password">
+      <label class="pwd-form-label">New Password</label>
+      <input class="pwd-form-input" type="password" id="pwd-new" placeholder="Min. 4 characters">
+      <label class="pwd-form-label">Confirm New Password</label>
+      <input class="pwd-form-input" type="password" id="pwd-confirm" placeholder="Repeat new password">
+      <div class="pwd-err" id="pwd-err"></div>
+      <div class="pwd-modal-btns">
+        <button class="btn-cancel" onclick="closePwdModal()">Cancel</button>
+        <button class="btn-gold" onclick="changePassword()">Update Password</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MAIN APP -->
+  <div id="app">
+    <header>
+      <div class="header-left">
+        <div class="header-logo">DISHIFY</div>
+        <div class="header-rest" id="header-rest-name">Restaurant</div>
+      </div>
+      <div class="header-right">
+        <div class="live-badge"><div class="live-dot"></div>Live Orders</div>
+        <button class="icon-btn" onclick="openPwdModal()">🔑 Change Password</button>
+        <button class="logout-btn" onclick="logout()">Sign Out</button>
+      </div>
+    </header>
+
+    <main>
+      <!-- TAB BAR -->
+      <div style="display:flex;gap:0;border-bottom:1px solid #2a2520;margin-bottom:32px">
+        <button id="tab-orders" onclick="switchTab('orders')" style="padding:14px 28px;background:transparent;border:none;border-bottom:2px solid var(--gold);color:var(--gold);font-family:'Outfit',sans-serif;font-size:.8rem;font-weight:600;letter-spacing:.15em;text-transform:uppercase;cursor:pointer;transition:all .15s">📋 Orders</button>
+        <button id="tab-chat" onclick="switchTab('chat')" style="padding:14px 28px;background:transparent;border:none;border-bottom:2px solid transparent;color:var(--cream-dim);font-family:'Outfit',sans-serif;font-size:.8rem;font-weight:600;letter-spacing:.15em;text-transform:uppercase;cursor:pointer;transition:all .15s;display:flex;align-items:center;gap:8px">💬 Guest Chat <span id="chat-tab-badge" style="background:var(--red);color:#fff;border-radius:50%;width:18px;height:18px;font-size:.62rem;font-weight:700;display:none;align-items:center;justify-content:center">0</span></button>
+      </div>
+
+      <!-- ORDERS SECTION -->
+      <div id="orders-section">
+        <div class="page-title" id="page-title">Orders Dashboard</div>
+        <div class="page-subtitle" id="page-subtitle">Live orders for your restaurant</div>
+        <div class="stats-row">
+          <div class="stat"><div class="stat-val" id="stat-new">0</div><div class="stat-label">New Orders</div></div>
+          <div class="stat"><div class="stat-val" id="stat-prep">0</div><div class="stat-label">Preparing</div></div>
+          <div class="stat"><div class="stat-val" id="stat-ready">0</div><div class="stat-label">Ready</div></div>
+          <div class="stat"><div class="stat-val" id="stat-today">0</div><div class="stat-label">Today Total</div></div>
+        </div>
+        <div class="stats-row" style="grid-template-columns:repeat(2,1fr)">
+          <div class="stat"><div class="stat-val" id="stat-revenue" style="font-size:1.8rem">PKR 0</div><div class="stat-label">Today's Revenue</div></div>
+          <div class="stat"><div class="stat-val" id="stat-avg" style="font-size:1.8rem">—</div><div class="stat-label">Avg. Order Value</div></div>
+        </div>
+        <div class="orders-grid" id="orders-grid">
+          <div class="empty-orders"><h3>Waiting for Orders</h3><p>Orders will appear here in real time.</p></div>
+        </div>
+      </div>
+
+      <!-- CHAT SECTION -->
+      <div id="chat-section">
+        <div class="page-title" style="margin-bottom:6px">Guest Chat</div>
+        <div class="page-subtitle" style="margin-bottom:20px">Real-time messages from customers browsing the menu</div>
+        <div class="chat-sessions-grid">
+          <div class="chat-session-list" id="chat-session-list">
+            <div class="chat-empty-list">No messages yet.<br>Guests will appear here when they send a message.</div>
+          </div>
+          <div class="chat-window" id="chat-window">
+            <div class="chat-no-session">← Select a conversation</div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    const firebaseConfig = {
+      apiKey:"AIzaSyBvfA2VXcrx69iS-3VaCR9lA6mGyn6OicI",authDomain:"dishify-menu.firebaseapp.com",
+      databaseURL:"https://dishify-menu-default-rtdb.firebaseio.com",projectId:"dishify-menu",
+      storageBucket:"dishify-menu.firebasestorage.app",messagingSenderId:"182873179650",
+      appId:"1:182873179650:web:8ff8cf3c04789d9f7b091b"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+    const auth = firebase.auth();
+
+    let allRestaurants = {};
+    let selectedRid = null;
+    let currentRestaurant = null;
+    let allOrders = {};
+    let knownOrderIds = new Set();
+    let initialized = false;
+    let restName = '';
+
+    function printReceipt(orderId, table, orderType, items, total, timeStr, specialReq, rname) {
+      const itemsHtml = (Array.isArray(items)?items:[]).map(i =>
+        `<tr><td style="padding:5px 0">${i.name}</td><td style="text-align:center;padding:5px 8px">×${i.qty}</td><td style="text-align:right;padding:5px 0">PKR ${(i.price*i.qty).toLocaleString()}</td></tr>`
+      ).join('');
+      const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Receipt #${orderId}</title>
+      <style>
+        *{box-sizing:border-box;margin:0;padding:0}
+        body{font-family:'Courier New',monospace;font-size:13px;max-width:320px;margin:0 auto;padding:20px 16px;color:#111;background:#fff}
+        h1{font-size:20px;text-align:center;margin:0 0 2px;letter-spacing:.12em}
+        .sub{text-align:center;font-size:12px;color:#444;margin-bottom:4px}
+        .divider{border:none;border-top:1px dashed #aaa;margin:10px 0}
+        .row{display:flex;justify-content:space-between;font-size:12px;color:#555;margin-bottom:3px}
+        table{width:100%;border-collapse:collapse;margin:8px 0}
+        th{text-align:left;font-size:11px;color:#777;padding:4px 0;border-bottom:1px solid #ddd}
+        .total-row td{font-weight:bold;font-size:14px;border-top:1px dashed #aaa;padding-top:8px}
+        .badge{display:inline-block;padding:2px 10px;border:1px solid #aaa;border-radius:3px;font-size:11px;margin:6px 0}
+        .special{background:#fffbea;border:1px solid #e0c84a;border-radius:3px;padding:8px 10px;font-size:11px;margin:8px 0;line-height:1.5}
+        .footer{text-align:center;font-size:10px;color:#888;margin-top:16px;line-height:1.6}
+        @media print{body{padding:4px}}
+      </style></head>
+      <body>
+      <h1>DISHIFY</h1>
+      <div class="sub">${rname||''}</div>
+      <div style="text-align:center;margin:6px 0"><span class="badge">${orderType==='takeaway'?'🥡 TAKEAWAY':'🍽️ DINE IN'}</span></div>
+      <hr class="divider">
+      <div class="row"><span>Order #</span><span><strong>${orderId}</strong></span></div>
+      ${orderType!=='takeaway'?`<div class="row"><span>Table</span><span>${table}</span></div>`:''}
+      <div class="row"><span>Time</span><span>${timeStr||''}</span></div>
+      <hr class="divider">
+      <table><thead><tr><th>Item</th><th style="text-align:center">Qty</th><th style="text-align:right">Price</th></tr></thead>
+      <tbody>${itemsHtml}</tbody>
+      <tbody><tr class="total-row"><td colspan="2">TOTAL</td><td style="text-align:right">PKR ${Number(total).toLocaleString()}</td></tr></tbody>
+      </table>
+      ${specialReq?`<div class="special"><strong>Special Requests:</strong><br>${specialReq}</div>`:''}
+      <hr class="divider">
+      <div class="footer">Thank you for dining with us!<br>Powered by Dishify</div>
+      </body></html>`;
+      // Open in popup window for printing (most reliable cross-browser)
+      const win = window.open('', '_blank', 'width=420,height=680,scrollbars=yes');
+      if (!win) {
+        // Fallback if popup blocked: blob URL download
+        const blob = new Blob([html], { type: 'text/html' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url; a.target = '_blank'; a.click();
+        setTimeout(() => URL.revokeObjectURL(url), 3000);
+        return;
+      }
+      win.document.open();
+      win.document.write(html);
+      win.document.close();
+      win.focus();
+      setTimeout(() => { win.print(); }, 600);
+    }
+
+    // Safe wrapper: looks up order from in-memory allOrders map by _oid
+    function printReceiptByOid(oid) {
+      const o = allOrders[oid];
+      if (!o) { showToast('Order data not found'); return; }
+      printReceipt(
+        o.id || o._oid.slice(-6).toUpperCase(),
+        o.table || 'Walk-in',
+        o.orderType || 'dine-in',
+        o.items || [],
+        o.total || 0,
+        o.timestampStr || '',
+        o.specialRequests || '',
+        restName || ''
+      );
+    }
+
+    function login() {
+      const email = document.getElementById('owner-email').value.trim();
+      const pwd = document.getElementById('pwd-input').value;
+      const btn = document.getElementById('login-btn'), err = document.getElementById('login-err');
+      err.textContent = '';
+      if (!email || !pwd) { err.textContent = 'Enter your email and password.'; return; }
+      btn.disabled = true; btn.textContent = 'Checking…';
+      auth.signInWithEmailAndPassword(email, pwd).catch(() => {
+        err.textContent = 'Incorrect email or password.';
+        btn.disabled = false; btn.textContent = 'View Orders';
+      });
+    }
+
+    function showApp(rid, restaurant) {
+      currentRestaurant = restaurant;
+      document.getElementById('step-password').style.display = 'none';
+      document.getElementById('app').style.display = 'block';
+      restName = restaurant.name || '';
+      document.getElementById('header-rest-name').textContent = restName;
+      document.getElementById('page-title').textContent = restName + ' Orders';
+      document.getElementById('page-subtitle').textContent = `Live dashboard — ${new Date().toLocaleDateString('en-PK',{weekday:'long',year:'numeric',month:'long',day:'numeric'})}`;
+      loadOrders(rid);
+      initOwnerChat(rid);
+    }
+
+    function logout() { auth.signOut(); }
+
+    // Gate: signed in, then look up which restaurant this uid owns via /owners/{uid}/rid.
+    auth.onAuthStateChanged(function(user){
+      const btn = document.getElementById('login-btn'), err = document.getElementById('login-err');
+      if (!user) {
+        document.getElementById('step-password').style.display = 'flex';
+        document.getElementById('app').style.display = 'none';
+        if (btn) { btn.disabled = false; btn.textContent = 'View Orders'; }
+        return;
+      }
+      db.ref('owners/' + user.uid + '/rid').once('value').then(function(ridSnap){
+        const rid = ridSnap.val();
+        if (!rid) { err.textContent = "This account isn't linked to a restaurant yet. Contact admin."; auth.signOut(); return; }
+        selectedRid = rid;
+        return db.ref('restaurants/' + rid).once('value').then(function(rSnap){
+          const restaurant = rSnap.val();
+          if (!restaurant) { err.textContent = 'Restaurant not found. Contact admin.'; auth.signOut(); return; }
+          showApp(rid, restaurant);
+        });
+      }).catch(function(){
+        if (btn) { btn.disabled = false; btn.textContent = 'View Orders'; }
+      });
+    });
+
+    // ── ORDERS ──
+    function loadOrders(rid) {
+      db.ref(`orders/${rid}`).on('value', snap => {
+        allOrders = {};
+        const raw = snap.val() || {};
+        Object.entries(raw).forEach(([oid, order]) => {
+          allOrders[oid] = { ...order, _oid: oid };
+        });
+        if (initialized) {
+          Object.values(allOrders).forEach(o => {
+            if (!knownOrderIds.has(o._oid) && o.status === 'new') {
+              showNotif(`🔔 New order from ${o.table || 'Walk-in'}!`);
+            }
+          });
+        }
+        Object.keys(allOrders).forEach(id => knownOrderIds.add(id));
+        initialized = true;
+        updateStats();
+        renderOrders(rid);
+      });
+    }
+
+    function updateStats() {
+      const orders = Object.values(allOrders);
+      const today = new Date().toDateString();
+      const todayOrders = orders.filter(o => new Date(o.timestamp).toDateString() === today);
+      const todayRevenue = todayOrders.reduce((s,o) => s+(o.total||0), 0);
+      const avgOrder = todayOrders.length ? Math.round(todayRevenue / todayOrders.length) : 0;
+      document.getElementById('stat-new').textContent = orders.filter(o=>o.status==='new').length;
+      document.getElementById('stat-prep').textContent = orders.filter(o=>o.status==='preparing').length;
+      document.getElementById('stat-ready').textContent = orders.filter(o=>o.status==='ready').length;
+      document.getElementById('stat-today').textContent = todayOrders.length;
+      document.getElementById('stat-revenue').textContent = `PKR ${todayRevenue.toLocaleString()}`;
+      document.getElementById('stat-avg').textContent = todayOrders.length ? `PKR ${avgOrder.toLocaleString()}` : '—';
+    }
+
+    function renderOrders(rid) {
+      const grid = document.getElementById('orders-grid');
+      let orders = Object.values(allOrders);
+      const statusOrder = {new:0,preparing:1,ready:2,done:3};
+      orders.sort((a,b) => {
+        const sd = (statusOrder[a.status]||0)-(statusOrder[b.status]||0);
+        return sd !== 0 ? sd : b.timestamp - a.timestamp;
+      });
+      if (!orders.length) {
+        grid.innerHTML = '<div class="empty-orders"><h3>No Orders</h3><p>Waiting for first order…</p></div>';
+        return;
+      }
+      grid.innerHTML = orders.map(o => {
+        const chip = {
+          new:`<span class="status-chip chip-new">✦ New</span>`,
+          preparing:`<span class="status-chip chip-preparing">⏳ Preparing</span>`,
+          ready:`<span class="status-chip chip-ready">✓ Ready</span>`,
+          done:`<span class="status-chip chip-done">Done</span>`
+        }[o.status]||'';
+        const itemsHtml = (o.items||[]).map(i=>`
+          <div class="order-line">
+            <span class="order-line-name">${i.name} <span class="order-line-qty">×${i.qty}</span></span>
+            <span class="order-line-price">PKR ${(i.price*i.qty).toLocaleString()}</span>
+          </div>`).join('');
+        const specialReqHtml = o.specialRequests ? `<div style="margin-bottom:12px;padding:9px 12px;background:rgba(201,168,76,.05);border:1px solid rgba(201,168,76,.18);border-radius:3px;font-size:.78rem;color:var(--cream-dim);line-height:1.5"><span style="color:var(--gold);font-size:.65rem;letter-spacing:.2em;text-transform:uppercase;display:block;margin-bottom:3px">📝 Special Requests</span>${o.specialRequests}</div>` : '';
+        const actionBtns = o.status !== 'done' ? `
+          <div class="status-btns">
+            ${o.status!=='preparing'&&o.status!=='ready'?`<button class="status-btn btn-preparing" onclick="updateStatus('${rid}','${o._oid}','preparing')">⏳ Preparing</button>`:''}
+            ${o.status!=='ready'?`<button class="status-btn btn-ready" onclick="updateStatus('${rid}','${o._oid}','ready')">✓ Ready</button>`:''}
+            <button class="status-btn btn-done" onclick="updateStatus('${rid}','${o._oid}','done')">✓ Done</button>
+          </div>` : '<p style="font-size:.75rem;color:#555;letter-spacing:.1em">Order completed</p>';
+        return `<div class="order-card status-${o.status}">
+          <div class="order-header">
+            <div>
+              <div class="order-id">#${o.id||o._oid.slice(-6).toUpperCase()} <span style="margin-left:6px;font-size:.62rem;padding:2px 8px;border-radius:2px;background:${o.orderType==='takeaway'?'rgba(96,168,255,.12)':'rgba(76,175,125,.1)'};border:1px solid ${o.orderType==='takeaway'?'rgba(96,168,255,.3)':'rgba(76,175,125,.3)'};color:${o.orderType==='takeaway'?'#60a8ff':'#4caf7d'}">${o.orderType==='takeaway'?'🥡 Takeaway':'🍽️ Dine In'}</span></div>
+              <div class="order-table">${o.table||'Walk-in'}</div>
+            </div>
+            <div style="text-align:right;display:flex;flex-direction:column;align-items:flex-end;gap:6px">${chip}<span style="font-size:.68rem;color:var(--cream-dim)">${o.timestampStr||''}</span><button data-oid="${o._oid}" onclick="printReceiptByOid(this.dataset.oid)" style="font-size:.62rem;padding:4px 10px;background:transparent;border:1px solid #3a3020;color:var(--cream-dim);border-radius:2px;cursor:pointer;letter-spacing:.1em;text-transform:uppercase;font-family:'Outfit',sans-serif;transition:all .15s ease" onmouseover="this.style.borderColor='var(--gold)';this.style.color='var(--gold)'" onmouseout="this.style.borderColor='#3a3020';this.style.color='var(--cream-dim)'">🖨 Print</button></div>
+          </div>
+          <div class="order-items-list">${itemsHtml}</div>
+          ${specialReqHtml}
+          <div class="order-total-row"><span>Total</span><span>PKR ${(o.total||0).toLocaleString()}</span></div>
+          ${actionBtns}
+        </div>`;
+      }).join('');
+    }
+
+    function updateStatus(rid, oid, status) {
+      db.ref(`orders/${rid}/${oid}/status`).set(status);
+    }
+
+    // ── PASSWORD CHANGE ──
+    function openPwdModal() {
+      document.getElementById('pwd-modal').classList.add('open');
+      document.getElementById('pwd-current').value='';
+      document.getElementById('pwd-new').value='';
+      document.getElementById('pwd-confirm').value='';
+      document.getElementById('pwd-err').textContent='';
+    }
+    function closePwdModal() { document.getElementById('pwd-modal').classList.remove('open'); }
+
+    function changePassword() {
+      const current = document.getElementById('pwd-current').value;
+      const newPwd = document.getElementById('pwd-new').value;
+      const confirm = document.getElementById('pwd-confirm').value;
+      const errEl = document.getElementById('pwd-err');
+      const user = auth.currentUser;
+      if (!user) { errEl.textContent = 'Session expired — please log in again.'; return; }
+      if (!current || !newPwd || !confirm) { errEl.textContent='All fields required'; return; }
+      if (newPwd !== confirm) { errEl.textContent='New passwords do not match'; return; }
+      if (newPwd.length < 6) { errEl.textContent='Password must be at least 6 characters'; return; }
+      const cred = firebase.auth.EmailAuthProvider.credential(user.email, current);
+      user.reauthenticateWithCredential(cred)
+        .then(() => user.updatePassword(newPwd))
+        .then(() => { closePwdModal(); showToast('✓ Password updated successfully'); })
+        .catch(err => { errEl.textContent = err.code === 'auth/wrong-password' ? 'Current password is incorrect' : (err.message || 'Could not update password'); });
+    }
+
+    // ── CURSOR (desktop only, butter-smooth RAF loop) ──
+    (function(){
+      const isTouchOnly=window.matchMedia('(hover:none)').matches;
+      const cur=document.getElementById('cursor'),ring=document.getElementById('cursorRing');
+      if(!cur||!ring)return;
+      if(isTouchOnly){cur.style.display='none';ring.style.display='none';return;}
+      document.body.style.cursor='none';
+      let mx=0,my=0,rx=0,ry=0;
+      document.addEventListener('mousemove',e=>{mx=e.clientX;my=e.clientY;},{passive:true});
+      function tick(){
+        cur.style.transform=`translate(${mx}px,${my}px) translate(-50%,-50%)`;
+        rx+=(mx-rx)*.18;ry+=(my-ry)*.18;
+        ring.style.transform=`translate(${rx}px,${ry}px) translate(-50%,-50%)`;
+        requestAnimationFrame(tick);
+      }
+      requestAnimationFrame(tick);
+    })();
+
+    function showNotif(msg) {
+      const old=document.querySelector('.notif-toast'); if(old) old.remove();
+      const t=document.createElement('div'); t.className='notif-toast'; t.textContent=msg;
+      document.body.appendChild(t);
+      try { const ctx=new AudioContext(); const o=ctx.createOscillator(); const g=ctx.createGain(); o.connect(g); g.connect(ctx.destination); o.frequency.value=880; g.gain.setValueAtTime(0.3,ctx.currentTime); g.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+0.4); o.start(); o.stop(ctx.currentTime+0.4); } catch(e){}
+      setTimeout(()=>t.remove(),4000);
+    }
+    function showToast(msg) {
+      const old=document.querySelector('.toast'); if(old) old.remove();
+      const t=document.createElement('div'); t.className='toast'; t.textContent=msg;
+      document.body.appendChild(t); setTimeout(()=>t.remove(),3000);
+    }
+
+    // ── TAB SWITCHING ──
+    function switchTab(tab) {
+      const ordersBtn = document.getElementById('tab-orders');
+      const chatBtn = document.getElementById('tab-chat');
+      const ordersSection = document.getElementById('orders-section');
+      const chatSection = document.getElementById('chat-section');
+      if(tab === 'orders'){
+        ordersSection.style.display = 'block'; chatSection.style.display = 'none';
+        ordersBtn.style.borderBottomColor = 'var(--gold)'; ordersBtn.style.color = 'var(--gold)';
+        chatBtn.style.borderBottomColor = 'transparent'; chatBtn.style.color = 'var(--cream-dim)';
+      } else {
+        ordersSection.style.display = 'none'; chatSection.style.display = 'block';
+        chatBtn.style.borderBottomColor = 'var(--gold)'; chatBtn.style.color = 'var(--gold)';
+        ordersBtn.style.borderBottomColor = 'transparent'; ordersBtn.style.color = 'var(--cream-dim)';
+        // Clear badge
+        const badge = document.getElementById('chat-tab-badge');
+        badge.style.display = 'none'; badge.textContent = '0';
+        // Mark all as seen
+        if(activeChatSession) markSessionSeen(activeChatSession);
+      }
+    }
+
+    // ── OWNER CHAT ──
+    let activeChatSession = null;
+    let chatOwnerRid = null;
+    let allSessions = {};
+
+    function initOwnerChat(rid) {
+      chatOwnerRid = rid;
+      db.ref('chats/' + rid).on('value', snap => {
+        const data = snap.val() || {};
+        allSessions = data;
+        renderSessionList(data);
+      });
+      if(Notification && Notification.permission === 'default') Notification.requestPermission();
+    }
+
+    function renderSessionList(data) {
+      const list = document.getElementById('chat-session-list');
+      const sessions = Object.entries(data);
+      if(!sessions.length){
+        list.innerHTML = '<div class="chat-empty-list">No messages yet.<br>Guests will appear here when they send a message.</div>';
+        return;
+      }
+      let totalUnread = 0;
+      list.innerHTML = sessions.map(([sessionId, msgs]) => {
+        const msgArr = Object.values(msgs).sort((a,b) => a.ts - b.ts);
+        const last = msgArr[msgArr.length - 1];
+        const unread = msgArr.filter(m => m.from === 'customer' && !m.seenByOwner).length;
+        totalUnread += unread;
+        const label = msgArr.find(m=>m.label)?.label || 'Guest ' + sessionId.slice(-4).toUpperCase();
+        const time = last ? new Date(last.ts).toLocaleTimeString('en-PK',{hour:'2-digit',minute:'2-digit'}) : '';
+        const isActive = sessionId === activeChatSession;
+        return `<div class="chat-session-item${isActive?' active':''}" onclick="openSession('${sessionId}')">
+          <div style="display:flex;align-items:center;justify-content:space-between">
+            <div class="chat-session-label">${label}</div>
+            <span class="chat-session-badge" style="display:${unread?'flex':'none'}">${unread}</span>
+          </div>
+          <div class="chat-session-preview">${last?.text || ''}</div>
+          <div class="chat-session-time">${time}</div>
+        </div>`;
+      }).join('');
+
+      // Update tab badge
+      const badge = document.getElementById('chat-tab-badge');
+      if(totalUnread > 0){
+        badge.textContent = totalUnread; badge.style.display = 'flex';
+        // Notify if chat tab not active
+        if(document.getElementById('orders-section').style.display !== 'none'){
+          showNotif(`💬 New message from guest`);
+          try{const ctx=new AudioContext();const o=ctx.createOscillator();const g=ctx.createGain();o.connect(g);g.connect(ctx.destination);o.frequency.value=660;g.gain.setValueAtTime(0.2,ctx.currentTime);g.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+0.3);o.start();o.stop(ctx.currentTime+0.3);}catch(e){}
+        }
+      } else { badge.style.display = 'none'; }
+
+      // Refresh active chat window if open
+      if(activeChatSession && allSessions[activeChatSession]){
+        renderChatWindow(activeChatSession, allSessions[activeChatSession]);
+      }
+    }
+
+    function openSession(sessionId) {
+      activeChatSession = sessionId;
+      markSessionSeen(sessionId);
+      renderSessionList(allSessions);
+      renderChatWindow(sessionId, allSessions[sessionId] || {});
+    }
+
+    function markSessionSeen(sessionId) {
+      if(!chatOwnerRid || !sessionId) return;
+      db.ref('chats/' + chatOwnerRid + '/' + sessionId).once('value', snap => {
+        const data = snap.val() || {};
+        Object.entries(data).forEach(([k,v]) => {
+          if(v.from === 'customer' && !v.seenByOwner)
+            db.ref('chats/'+chatOwnerRid+'/'+sessionId+'/'+k+'/seenByOwner').set(true);
+        });
+      });
+    }
+
+    function renderChatWindow(sessionId, msgs) {
+      const win = document.getElementById('chat-window');
+      const msgArr = Object.values(msgs).sort((a,b) => a.ts - b.ts);
+      const label = msgArr.find(m=>m.label)?.label || 'Guest ' + sessionId.slice(-4).toUpperCase();
+      win.innerHTML = `
+        <div class="chat-window-header">${label}</div>
+        <div class="chat-window-msgs" id="cwmsgs">
+          ${msgArr.length ? msgArr.map(m => {
+            const mine = m.from === 'restaurant';
+            const time = new Date(m.ts).toLocaleTimeString('en-PK',{hour:'2-digit',minute:'2-digit'});
+            return `<div class="owner-chat-msg ${mine?'mine':'theirs'}">${m.text}<div class="owner-chat-msg-time">${time}</div></div>`;
+          }).join('') : '<div style="text-align:center;color:#555;font-size:.8rem;padding:20px">No messages yet</div>'}
+        </div>
+        <div class="chat-window-input">
+          <input class="chat-window-inp" id="owner-chat-inp" type="text" placeholder="Reply to ${label}…" maxlength="300" onkeydown="if(event.key==='Enter')sendOwnerMsg()">
+          <button class="chat-window-send" onclick="sendOwnerMsg()">Send</button>
+        </div>`;
+      const msgsEl = document.getElementById('cwmsgs');
+      if(msgsEl) msgsEl.scrollTop = msgsEl.scrollHeight;
+      setTimeout(() => document.getElementById('owner-chat-inp')?.focus(), 80);
+    }
+
+    function sendOwnerMsg() {
+      const inp = document.getElementById('owner-chat-inp');
+      const text = inp?.value.trim();
+      if(!text || !activeChatSession || !chatOwnerRid) return;
+      inp.value = '';
+      db.ref('chats/' + chatOwnerRid + '/' + activeChatSession).push({
+        text, from: 'restaurant', ts: Date.now(), seenByOwner: true, seenByCust: false
+      });
+    }
+  </script>
+</body>
+</html>
