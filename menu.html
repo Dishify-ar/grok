@@ -543,7 +543,8 @@
       const orderId = Date.now().toString(36).toUpperCase();
       const specialReq = (document.getElementById('special-req-desk')?.value || document.getElementById('special-req-mob')?.value || '').trim();
       try{
-        await db.ref('orders/'+rid).push({
+        const orderRef = db.ref('orders/'+rid).push();
+        await orderRef.set({
           id:orderId, restaurantId:rid,
           table: isTake ? 'Takeaway' : table,
           orderType, specialRequests:specialReq||null,
@@ -554,7 +555,10 @@
         closeConfirm();
         document.getElementById('success-order-id').textContent = 'ORDER #'+orderId;
         document.getElementById('success-modal').classList.add('open');
-        saveOrderToTracker(orderId, orderType, isTake?'Takeaway':table, cart.slice(), total);
+        // Pass the Firebase key straight through — a diner has no auth, so a query to look it
+        // back up later (orderByChild/equalTo against the whole orders/{rid} list) is denied by
+        // the database rules, same as it would be for anyone else without an account.
+        saveOrderToTracker(orderId, orderRef.key, orderType, isTake?'Takeaway':table, cart.slice(), total);
         cart=[]; updateCart(); closeMobileDrawer();
         if(document.getElementById('special-req-desk')) document.getElementById('special-req-desk').value='';
         if(document.getElementById('special-req-mob')) document.getElementById('special-req-mob').value='';
@@ -588,18 +592,14 @@
 
     // ── ORDER STATUS TRACKER ──
     const TRACKER_KEY = 'dishify_orders_v2';
+    const watchedOrderKeys = new Set(); // guards against re-attaching a listener renderTracker() already has open
 
-    function saveOrderToTracker(orderId, orderType, table, items, total) {
+    function saveOrderToTracker(orderId, fbKey, orderType, table, items, total) {
       const saved = getTrackedOrders();
-      // Find the Firebase order key by orderId (search recent orders)
-      db.ref('orders/'+rid).orderByChild('id').equalTo(orderId).once('value', snap => {
-        const val = snap.val();
-        const fbKey = val ? Object.keys(val)[0] : null;
-        saved.push({ orderId, fbKey, orderType, table, total, status: 'new', ts: Date.now(), rid });
-        localStorage.setItem(TRACKER_KEY, JSON.stringify(saved));
-        renderTracker();
-        if(fbKey) watchOrderStatus(fbKey, orderId);
-      });
+      saved.push({ orderId, fbKey, orderType, table, total, status: 'new', ts: Date.now(), rid });
+      localStorage.setItem(TRACKER_KEY, JSON.stringify(saved));
+      renderTracker();
+      if(fbKey) watchOrderStatus(fbKey, orderId);
     }
 
     function getTrackedOrders() {
@@ -615,6 +615,8 @@
     }
 
     function watchOrderStatus(fbKey, orderId) {
+      if(watchedOrderKeys.has(fbKey)) return; // already watching — renderTracker() calls this on every render
+      watchedOrderKeys.add(fbKey);
       let prevStatus = null;
       db.ref('orders/'+rid+'/'+fbKey+'/status').on('value', snap => {
         const status = snap.val();

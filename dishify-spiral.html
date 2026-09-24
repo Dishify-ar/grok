@@ -1,0 +1,1233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Dishify — See it before it arrives</title>
+<meta name="description" content="Dishify — AR menus, instant QR ordering, and live kitchen sync for restaurants." />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=JetBrains+Mono:wght@400;500&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-database-compat.js"></script>
+<style>
+  /* ---------------- Shared design tokens ---------------- */
+  :root{
+    --paper:#EDEAE1;
+    --paper-2:#E3DECE;
+    --ink:#171512;
+    --ink-70:rgba(23,21,18,.68);
+    --ink-45:rgba(23,21,18,.62);
+    --line:rgba(23,21,18,.12);
+    --line-strong:rgba(23,21,18,.24);
+    --brick:#B8431C;
+    --brick-light:#CC5A30;
+    --moss:#5C6B4E;
+    --tan:#7A5A2E;
+    --cyan:#4DD9E8;
+    --cyan-dim:rgba(77,217,232,.16);
+    --dark:#15130F;
+    --dark-2:#1D1A15;
+    --bone:#EDEAE1;
+    --bone-dim:rgba(237,234,225,.58);
+    --bone-line:rgba(237,234,225,.16);
+    --f-display:'Space Grotesk',sans-serif;
+    --f-mono:'JetBrains Mono',monospace;
+    --f-body:'Inter',sans-serif;
+  }
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{background:var(--paper);color:var(--ink);font-family:var(--f-body);font-weight:400;overflow-x:clip;-webkit-font-smoothing:antialiased}
+  img{max-width:100%;display:block}
+  a{color:inherit}
+  :focus-visible{outline:2px solid var(--brick);outline-offset:3px}
+  @media (prefers-reduced-motion: reduce){
+    *{animation-duration:.01ms !important;animation-iteration-count:1 !important;transition-duration:.01ms !important;scroll-behavior:auto !important}
+  }
+
+  .grid-tex{position:fixed;inset:0;pointer-events:none;z-index:1;
+    background-image:linear-gradient(var(--line) 1px, transparent 1px),linear-gradient(90deg, var(--line) 1px, transparent 1px);
+    background-size:88px 88px;opacity:.4;mask-image:radial-gradient(circle at 50% 30%, black, transparent 78%);}
+  body.theme-dark .grid-tex{opacity:.12}
+
+
+  /* ---------- Nav ---------- */
+  .topnav{position:fixed;top:0;left:0;right:0;z-index:90;display:flex;align-items:center;justify-content:space-between;padding:26px 48px;transition:color .4s ease}
+  .nav-mark{font-family:var(--f-display);font-weight:700;font-size:1rem;letter-spacing:.02em;text-transform:uppercase;text-decoration:none;display:flex;align-items:center;gap:8px}
+  .nav-mark::before{content:'';width:7px;height:7px;background:var(--brick);border-radius:50%;display:inline-block}
+  .nav-links{display:flex;align-items:center;gap:36px;list-style:none}
+  .nav-links a{font-family:var(--f-mono);font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;text-decoration:none;color:var(--ink-70);transition:color .2s ease}
+  .nav-links a:hover{color:var(--brick)}
+  .nav-cta{font-family:var(--f-mono);font-size:.7rem;letter-spacing:.08em;text-transform:uppercase;text-decoration:none;border:1px solid var(--line-strong);padding:9px 18px;border-radius:2px;transition:all .2s ease}
+  .nav-cta:hover{border-color:var(--ink);background:rgba(23,21,18,.05)}
+  body.theme-dark .topnav{color:var(--bone)}
+  body.theme-dark .nav-links a{color:var(--bone-dim)}
+  body.theme-dark .nav-cta{border-color:var(--bone-line);color:var(--bone)}
+  body.theme-dark .nav-cta:hover{border-color:var(--bone);background:rgba(237,234,225,.06)}
+  @media (max-width:820px){ .nav-links{display:none} .topnav{padding:20px 24px} }
+
+  /* ---------- Buttons ---------- */
+  .btn{font-family:var(--f-mono);font-size:.74rem;letter-spacing:.08em;text-transform:uppercase;padding:15px 26px;border-radius:2px;display:inline-flex;align-items:center;gap:10px;text-decoration:none;border:none;cursor:pointer;transition:transform .3s cubic-bezier(.16,1,.3,1), background .25s ease, border-color .25s ease, color .25s ease}
+  .btn-primary{background:var(--ink);color:var(--paper)}
+  .btn-primary:hover{background:var(--brick);transform:translateY(-2px)}
+  .btn-ghost{border:1px solid var(--line-strong);color:var(--ink);background:transparent}
+  .btn-ghost:hover{border-color:var(--ink);transform:translateY(-2px)}
+  .btn-ghost.on-dark{border-color:var(--bone-line);color:var(--bone)}
+  .btn-ghost.on-dark:hover{border-color:var(--bone)}
+  .btn-ar{border:1px solid var(--cyan);color:var(--ink);background:var(--cyan-dim)}
+  .btn-ar:hover{background:var(--cyan);color:var(--dark);transform:translateY(-2px)}
+  .btn-arrow{transition:transform .3s ease}
+  .btn:hover .btn-arrow{transform:translateX(3px)}
+  .btn:disabled{opacity:.5;cursor:not-allowed;transform:none !important}
+
+  /* ---------- Hero ---------- */
+  #hero{position:relative;min-height:max(100svh,720px);display:flex;flex-direction:column;justify-content:space-between;padding:118px 48px 56px;overflow:clip;color:var(--bone);background:radial-gradient(ellipse 58% 52% at 50% 40%, rgba(58,45,30,.85) 0%, rgba(21,19,15,0) 72%),linear-gradient(180deg,#1B1712 0%,#15130F 55%,#100E0B 100%)}
+  /* one soft warm pool behind the dish; --stage-y is set by the hero script so it follows the burger */
+  .hero-spot{position:absolute;left:50%;top:var(--stage-y,54%);width:min(70vw,900px);height:min(70vw,900px);transform:translate(-50%,-50%);background:radial-gradient(circle, rgba(204,90,48,.18), rgba(184,67,28,.07) 45%, transparent 68%);pointer-events:none;z-index:0}
+  #hero-canvas{position:absolute;inset:0;width:100%;height:100%;z-index:1}
+  .eyebrow{font-family:var(--f-mono);font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-70);display:flex;align-items:center;gap:8px}
+  .eyebrow b{color:var(--ink);font-weight:500}
+  .hero-mid{position:relative;z-index:3;text-align:center}
+  .hero-heading{font-family:var(--f-display);font-weight:700;text-transform:uppercase;line-height:.9;letter-spacing:-.01em;font-size:clamp(2.3rem,7.6vw,6.4rem);color:var(--bone)}
+  .hero-heading span{display:block}
+  .hero-heading .h-line2{text-wrap:balance}
+  .hero-heading em{font-style:normal;color:var(--brick-light)}
+  .hero-bottom{position:relative;z-index:3;display:flex;justify-content:space-between;align-items:flex-end;gap:28px;flex-wrap:wrap}
+  .hero-sub{max-width:340px;font-family:var(--f-body);font-weight:400;font-size:.98rem;line-height:1.55;color:var(--bone-dim)}
+  .hero-ctas{display:flex;gap:12px;flex-wrap:wrap}
+  .scroll-cue{position:absolute;bottom:20px;left:50%;transform:translateX(-50%);z-index:3;display:flex;flex-direction:column;align-items:center;gap:8px;font-family:var(--f-mono);font-size:.62rem;letter-spacing:.28em;text-transform:uppercase;color:var(--bone-dim)}
+  .scroll-cue::after{content:'';width:1px;height:32px;background:linear-gradient(var(--bone-dim),transparent);animation:cueMove 2.2s ease-in-out infinite}
+  @keyframes cueMove{0%,100%{transform:scaleY(.6);opacity:.4}50%{transform:scaleY(1);opacity:1}}
+  @media (max-width:640px){
+    #hero{padding:100px 22px 40px}
+    .hero-bottom{flex-direction:column;align-items:stretch;gap:20px}
+    .hero-sub{max-width:none}
+    .hero-ctas .btn{flex:1 1 100%;justify-content:center}
+    .scroll-cue{display:none}
+  }
+  /* Hero runs its own dark, staged theme regardless of scroll position */
+  #hero .btn-primary{background:var(--bone);color:var(--dark)}
+  #hero .btn-primary:hover{background:var(--brick-light);color:var(--bone)}
+  #hero .btn-ar{color:var(--bone)}
+  #hero .btn-ar:hover{color:var(--dark)}
+
+  /* ---------- Marquee (cuisine reel) ---------- */
+  #marquee{position:relative;z-index:2;padding:64px 0;overflow:hidden;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+  .marquee-row{display:flex;gap:14px;width:max-content;will-change:transform}
+  .marquee-row + .marquee-row{margin-top:14px}
+  .reel-tile{flex:0 0 auto;width:260px;height:170px;border-radius:6px;position:relative;overflow:hidden;border:1px solid var(--line-strong);padding:14px;display:flex;flex-direction:column;justify-content:space-between}
+  .reel-tile::after{content:'';position:absolute;inset:0;background-image:linear-gradient(rgba(23,21,18,.08) 1px, transparent 1px),linear-gradient(90deg, rgba(23,21,18,.08) 1px, transparent 1px);background-size:20px 20px;mix-blend-mode:multiply}
+  .reel-cat{font-family:var(--f-mono);font-size:.6rem;letter-spacing:.1em;text-transform:uppercase;color:rgba(23,21,18,.55);position:relative;z-index:1;align-self:flex-end}
+  .reel-name{font-family:var(--f-mono);font-size:.68rem;letter-spacing:.05em;text-transform:uppercase;color:var(--ink);position:relative;z-index:1;background:rgba(237,234,225,.6);padding:4px 8px;border-radius:2px;width:fit-content}
+  @media (max-width:640px){ .reel-tile{width:200px;height:130px} }
+
+  /* ---------- Features (numbered rows, paper) ---------- */
+  #features{position:relative;z-index:2;padding:130px 48px;max-width:1100px;margin:0 auto}
+  .section-head{display:flex;justify-content:space-between;align-items:flex-end;gap:20px;margin-bottom:50px;flex-wrap:wrap}
+  .section-title{font-family:var(--f-display);font-weight:600;letter-spacing:-.01em;line-height:1.05;font-size:clamp(2rem,4.4vw,3.2rem);max-width:560px;margin-top:10px}
+  .feat-row{display:grid;grid-template-columns:64px 1fr;align-items:start;gap:24px;padding:30px 0;border-bottom:1px solid var(--line)}
+  .feat-row:first-child{border-top:1px solid var(--line)}
+  .feat-index{font-family:var(--f-mono);font-size:.82rem;color:var(--brick);margin-right:.6em}
+  .feat-name{font-family:var(--f-display);font-weight:600;text-transform:uppercase;letter-spacing:.01em;font-size:clamp(1.05rem,2.2vw,1.5rem);margin-bottom:6px}
+  .feat-desc{font-family:var(--f-body);font-weight:400;color:var(--ink-70);max-width:560px;font-size:.94rem;line-height:1.6}
+  @media (max-width:700px){ #features{padding:90px 22px} }
+
+  /* ---------- Why grid ---------- */
+  #why{position:relative;z-index:2;background:var(--paper-2);padding:120px 48px;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+  .why-inner{max-width:1100px;margin:0 auto}
+  .why-grid{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--line-strong);border:1px solid var(--line-strong);margin-top:50px}
+  .why-cell{background:var(--paper-2);padding:40px 36px;position:relative}
+  .why-num{font-family:var(--f-mono);font-size:.82rem;color:var(--brick);margin-bottom:14px;display:block}
+  .why-title{font-family:var(--f-display);font-weight:600;text-transform:uppercase;font-size:1.1rem;margin-bottom:10px}
+  .why-desc{font-family:var(--f-body);font-weight:400;font-size:.9rem;color:var(--ink-70);line-height:1.7}
+  @media (max-width:700px){ #why{padding:90px 22px} .why-grid{grid-template-columns:1fr} }
+
+  /* ---------- Stats ---------- */
+  #stats{position:relative;z-index:2;padding:60px 48px;border-bottom:1px solid var(--line)}
+  .stats-strip{max-width:1100px;margin:0 auto;display:grid;grid-template-columns:repeat(4,1fr)}
+  .stat{padding:16px 20px;border-left:1px solid var(--line);text-align:center}
+  .stat:first-child{border-left:none}
+  .stat-val{font-family:var(--f-display);font-weight:700;font-size:clamp(1.8rem,4vw,3rem);color:var(--brick)}
+  .stat-label{font-family:var(--f-mono);font-size:.66rem;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-45);margin-top:6px}
+  @media (max-width:700px){ #stats{padding:40px 20px} .stats-strip{grid-template-columns:1fr 1fr;row-gap:24px} .stat:nth-child(3){border-left:none} }
+
+  /* ================= DARK ZONE — Restaurants / How it works / Contact / Login ================= */
+  #service-zone{position:relative;z-index:3;background:var(--dark);color:var(--bone);padding:140px 48px 0;border-radius:36px 36px 0 0;margin-top:-36px}
+  .zone-inner{max-width:1160px;margin:0 auto}
+  #service-zone .eyebrow{color:var(--bone-dim)}
+  #service-zone .section-title{color:var(--bone)}
+
+  /* How it works — sticky stacking cards */
+  .stack{margin-top:64px;position:relative}
+  .panel{height:104vh;position:relative}
+  .panel:last-child{height:auto;padding-bottom:8vh}
+  .flow-card{position:sticky;top:104px;min-height:56vh;border:1px solid var(--bone-line);border-radius:26px;padding:34px;display:flex;flex-direction:column;gap:22px;background:linear-gradient(180deg, rgba(237,234,225,.035), rgba(237,234,225,0));transform-origin:top center;will-change:transform}
+  .flow-top{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap}
+  .flow-id{display:flex;align-items:center;gap:14px}
+  .flow-num{font-family:var(--f-mono);font-size:1.6rem;color:var(--accent, var(--brick-light))}
+  .flow-name{font-family:var(--f-display);font-weight:600;text-transform:uppercase;font-size:clamp(1.2rem,3vw,1.9rem)}
+  .flow-cat{font-family:var(--f-mono);font-size:.62rem;letter-spacing:.14em;text-transform:uppercase;color:var(--bone-dim)}
+  .flow-preview{flex:1;border-radius:18px;position:relative;overflow:hidden;min-height:180px;background:radial-gradient(circle at 30% 20%, rgba(237,234,225,.14), transparent 55%),linear-gradient(135deg, var(--accent, var(--brick)) 0%, var(--dark-2) 78%)}
+  .flow-preview::after{content:'';position:absolute;inset:0;background-image:linear-gradient(rgba(237,234,225,.07) 1px, transparent 1px),linear-gradient(90deg, rgba(237,234,225,.07) 1px, transparent 1px);background-size:34px 34px}
+  .flow-preview::before{content:attr(data-tag);position:absolute;left:14px;bottom:14px;font-family:var(--f-mono);font-size:.64rem;letter-spacing:.1em;text-transform:uppercase;color:rgba(237,234,225,.85);z-index:1;background:rgba(21,19,15,.55);padding:5px 10px;border-radius:20px;backdrop-filter:blur(3px)}
+  .flow-desc{font-family:var(--f-body);font-weight:400;color:var(--bone-dim);max-width:520px;font-size:.92rem;line-height:1.6}
+  .flow-try{display:inline-block;margin-top:12px;font-family:var(--f-mono);font-size:.72rem;letter-spacing:.06em;color:var(--cyan);text-decoration:none;border-bottom:1px solid var(--cyan-dim)}
+  .flow-try:hover{border-color:var(--cyan)}
+  @media (max-width:700px){ .panel{height:auto;margin-bottom:22px} .flow-card{position:relative;top:0;min-height:auto} .flow-preview{min-height:150px} }
+
+  /* Restaurants grid */
+  #restaurants{padding:120px 0 0}
+  .restaurant-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:20px;margin-top:50px}
+  .restaurant-card{position:relative;background:var(--dark-2);border:1px solid var(--bone-line);border-radius:14px;overflow:hidden;display:block;transition:all .28s cubic-bezier(.16,1,.3,1)}
+  .restaurant-card:hover{border-color:var(--brick-light);transform:translateY(-3px)}
+  .card-img{height:190px;overflow:hidden;position:relative}
+  .card-img::after{content:'';position:absolute;inset:0;background-image:linear-gradient(rgba(237,234,225,.06) 1px, transparent 1px),linear-gradient(90deg, rgba(237,234,225,.06) 1px, transparent 1px);background-size:22px 22px}
+  .card-img img{width:100%;height:100%;object-fit:cover;transition:transform .4s ease, filter .3s ease;filter:brightness(.82) saturate(.92);will-change:transform}
+  .restaurant-card:hover .card-img img{transform:scale(1.04);filter:brightness(.95) saturate(1.02)}
+  .card-body{padding:22px 22px 26px}
+  .card-tag{display:inline-flex;align-items:center;gap:6px;font-family:var(--f-mono);font-size:.6rem;letter-spacing:.12em;text-transform:uppercase;color:#D9764A;border:1px solid rgba(204,90,48,.35);padding:5px 11px;border-radius:2px;margin-bottom:12px}
+  .card-name{font-family:var(--f-display);font-weight:600;text-transform:uppercase;font-size:1.2rem;color:var(--bone);margin-bottom:6px}
+  .card-desc{font-family:var(--f-body);font-weight:400;font-size:.85rem;color:var(--bone-dim);line-height:1.6;margin-bottom:14px}
+  .card-scan-badge{display:inline-flex;align-items:center;gap:8px;font-family:var(--f-mono);font-size:.62rem;letter-spacing:.08em;text-transform:uppercase;padding:8px 14px;border:1px solid var(--bone-line);border-radius:2px;color:var(--bone-dim)}
+  .empty-state{grid-column:1/-1;text-align:center;padding:70px 30px;color:var(--bone-dim);font-family:var(--f-mono);font-size:.85rem}
+  .skel{background:linear-gradient(90deg,#221F1A 25%,#2B2621 50%,#221F1A 75%);background-size:200% 100%;animation:shimmer 1.5s infinite;border-radius:3px}
+  @keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+
+  /* Contact */
+  #contact{padding:130px 0 0}
+  .contact-grid{display:grid;grid-template-columns:1fr 1.15fr;gap:56px;align-items:start;margin-top:50px}
+  .contact-info{display:flex;flex-direction:column;gap:26px}
+  .ci-item{display:flex;gap:16px;align-items:flex-start}
+  .ci-icon{width:38px;height:38px;border:1px solid var(--bone-line);border-radius:2px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-family:var(--f-mono);font-size:.72rem;color:var(--brick-light)}
+  .ci-text h4{font-family:var(--f-display);font-weight:600;text-transform:uppercase;font-size:.92rem;color:var(--bone);margin-bottom:4px}
+  .ci-text p{font-family:var(--f-body);font-weight:400;font-size:.85rem;color:var(--bone-dim);line-height:1.6}
+  .ci-text a{color:var(--brick-light);text-decoration:none}
+  .ci-text a:hover{text-decoration:underline}
+  .contact-form{border:1px solid var(--bone-line);border-radius:16px;padding:36px}
+  .cf-heading{font-family:var(--f-display);font-weight:600;text-transform:uppercase;font-size:1.1rem;margin-bottom:24px;color:var(--bone)}
+  .cf-group{margin-bottom:16px}
+  .cf-label{display:block;font-family:var(--f-mono);font-size:.62rem;letter-spacing:.1em;text-transform:uppercase;color:var(--bone-dim);margin-bottom:7px}
+  .cf-input,.cf-textarea,.cf-select{width:100%;padding:12px 14px;background:var(--dark-2);border:1px solid var(--bone-line);color:var(--bone);border-radius:6px;font-family:var(--f-body);font-size:.88rem;transition:border-color .2s;outline:none}
+  .cf-input:focus,.cf-textarea:focus,.cf-select:focus{border-color:var(--brick-light)}
+  .cf-select option{background:var(--dark-2)}
+  .cf-textarea{resize:vertical;min-height:100px}
+  .cf-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .cf-submit{width:100%;margin-top:4px}
+  .cf-success{display:none;text-align:center;padding:16px;border:1px solid rgba(92,107,78,.4);border-radius:8px;color:#93A87F;font-family:var(--f-mono);font-size:.8rem;margin-top:14px}
+  @media (max-width:820px){ .contact-grid{grid-template-columns:1fr} .cf-row{grid-template-columns:1fr} }
+
+  /* Login zone */
+  #login-zone{padding:120px 0 0}
+  .login-cards{display:flex;gap:22px;flex-wrap:wrap;margin-top:44px}
+  .login-card{flex:1;min-width:280px;border:1px solid var(--bone-line);border-radius:16px;padding:34px 30px;text-decoration:none;transition:all .3s cubic-bezier(.16,1,.3,1);position:relative}
+  .login-card:hover{border-color:var(--brick-light);transform:translateY(-3px)}
+  .login-card-tag{font-family:var(--f-mono);font-size:.62rem;letter-spacing:.1em;text-transform:uppercase;color:var(--brick-light);display:block;margin-bottom:14px}
+  .login-card-title{font-family:var(--f-display);font-weight:600;text-transform:uppercase;font-size:1.3rem;color:var(--bone);margin-bottom:10px}
+  .login-card-desc{font-family:var(--f-body);font-weight:400;font-size:.86rem;color:var(--bone-dim);line-height:1.6;margin-bottom:22px}
+
+  /* Footer */
+  footer{max-width:1160px;margin:0 auto;padding:70px 0 40px;display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;margin-top:90px;border-top:1px solid var(--bone-line)}
+  .foot-mark{font-family:var(--f-mono);font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;color:var(--bone-dim)}
+  .foot-mark a{color:var(--brick-light);text-decoration:none}
+  @media (max-width:700px){ #service-zone{padding:90px 20px 0;border-radius:22px 22px 0 0} #restaurants,#contact,#login-zone{padding-top:90px} footer{justify-content:center;text-align:center;margin-top:60px} }
+
+  /* ================= INTEGRATION LAYER ================= */
+  /* AR viewfinder corner-frame — used on cards that should read as "detected objects" */
+  .frame{position:relative}
+  .frame::before{
+    content:'';position:absolute;inset:0;pointer-events:none;z-index:3;border-radius:inherit;
+    background:
+      linear-gradient(var(--cyan) 0 0) top left/12px 2px no-repeat,
+      linear-gradient(var(--cyan) 0 0) top left/2px 12px no-repeat,
+      linear-gradient(var(--cyan) 0 0) top right/12px 2px no-repeat,
+      linear-gradient(var(--cyan) 0 0) top right/2px 12px no-repeat,
+      linear-gradient(var(--cyan) 0 0) bottom left/12px 2px no-repeat,
+      linear-gradient(var(--cyan) 0 0) bottom left/2px 12px no-repeat,
+      linear-gradient(var(--cyan) 0 0) bottom right/12px 2px no-repeat,
+      linear-gradient(var(--cyan) 0 0) bottom right/2px 12px no-repeat;
+    opacity:0;transition:opacity .35s ease;
+  }
+  .frame:hover::before,.frame.in-view::before{opacity:.85}
+
+  /* Shared full-viewport canvas for every panel's 3D object (single WebGL context, scissor-rendered per slot) */
+
+  /* Contact "chit" — the paper zone's material, materializing inside the dark zone */
+  .contact-form.chit{background:var(--paper);border:none;border-radius:14px;padding:38px 34px 30px;position:relative;color:var(--ink)}
+  .contact-form.chit::before{content:'';position:absolute;top:0;left:26px;right:26px;height:6px;background-image:radial-gradient(circle,var(--dark) 2.6px,transparent 3px);background-size:15px 6px;background-position:0 -3px}
+  .contact-form.chit .cf-heading{color:var(--ink)}
+  .contact-form.chit .cf-label{color:var(--ink-45)}
+  .contact-form.chit .cf-input,.contact-form.chit .cf-textarea,.contact-form.chit .cf-select{background:transparent;border:none;border-bottom:1px solid var(--line-strong);color:var(--ink);border-radius:0;padding:10px 2px}
+  .contact-form.chit .cf-select option{background:var(--paper);color:var(--ink)}
+  .contact-form.chit .cf-input:focus,.contact-form.chit .cf-textarea:focus,.contact-form.chit .cf-select:focus{border-color:var(--brick)}
+  .contact-form.chit .btn-primary{background:var(--ink);color:var(--paper)}
+  .contact-form.chit .btn-primary:hover{background:var(--brick)}
+  .contact-form.chit .cf-success{border-color:rgba(92,107,78,.35);color:#3f5c34}
+
+  /* AR demo hand-off: desktop visitors scan a QR to open the demo on their phone */
+  .qr-dialog{margin:auto;border:none;border-radius:16px;padding:0;background:var(--paper);color:var(--ink);width:min(92vw,360px);box-shadow:0 30px 80px rgba(0,0,0,.45)}
+  .qr-dialog::backdrop{background:rgba(21,19,15,.72);backdrop-filter:blur(3px)}
+  .qr-card{position:relative;padding:30px 28px 26px;text-align:center}
+  .qr-close{position:absolute;top:8px;right:10px;background:none;border:0;font-size:1.5rem;line-height:1;color:var(--ink-70);cursor:pointer;padding:6px 10px}
+  .qr-close:hover{color:var(--ink)}
+  .qr-card h3{font-family:var(--f-display);font-weight:700;font-size:1.4rem;line-height:1.15;letter-spacing:-.01em;margin:10px 0 20px}
+  #ar-qr-code{display:flex;justify-content:center;align-items:center;min-height:184px;margin:0 auto 14px;font-family:var(--f-mono);font-size:.72rem;line-height:1.6;color:var(--ink-70)}
+  .qr-note{font-size:.9rem;line-height:1.5;color:var(--ink-70)}
+  .qr-open{display:inline-block;margin-top:14px;font-family:var(--f-mono);font-size:.72rem;letter-spacing:.06em;color:var(--brick);text-decoration:none;border-bottom:1px solid currentColor}
+  /* ---------- Line icons (replace the old spinning 3D placeholder icons) ---------- */
+  .icon-line{width:26px;height:26px;stroke:currentColor;fill:none;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0;display:block}
+  .flow-icon-wrap{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;z-index:0;pointer-events:none}
+  .flow-icon-wrap .icon-line{width:56px;height:56px;color:rgba(237,234,225,.5);stroke-width:1.1}
+  .login-icon{color:var(--bone-dim);margin-bottom:16px}
+  .feat-icon,.why-icon{color:var(--brick-light);margin-bottom:14px}
+</style>
+</head>
+<body>
+
+
+  <div class="grid-tex" aria-hidden="true"></div>
+
+  <nav class="topnav">
+    <a class="nav-mark" href="#hero">Dishify</a>
+    <ul class="nav-links">
+      <li><a href="#restaurants">Restaurants</a></li>
+      <li><a href="#why">Why Dishify</a></li>
+      <li><a href="#contact">Contact</a></li>
+    </ul>
+    <a class="nav-cta" href="#login-zone">Partner login</a>
+  </nav>
+
+  <main>
+
+    <!-- HERO -->
+    <section id="hero">
+      <div class="hero-spot" aria-hidden="true"></div>
+      <canvas id="hero-canvas" aria-hidden="true"></canvas>
+
+      <div class="hero-mid">
+        <h1 class="hero-heading">
+          <span>See it</span>
+          <span class="h-line2">before it <em>arrives.</em></span>
+        </h1>
+      </div>
+
+      <div class="hero-bottom">
+        <p class="hero-sub">AR menus for restaurants. Guests scan the table QR, see the dish at real size, and order. No app.</p>
+        <div class="hero-ctas">
+          <a class="btn btn-primary" id="hero-demo" href="#contact">Book a demo <span class="btn-arrow">→</span></a>
+          <a class="btn btn-ar" data-ar-demo href="ar.html?model=assets%2Fburger.glb&amp;item=Classic%20Burger" target="_blank" rel="noopener">Try it on your phone <span class="btn-arrow">→</span></a>
+        </div>
+      </div>
+
+      <p class="scroll-cue">Scroll</p>
+    </section>
+
+    <!-- MARQUEE -->
+    <section id="marquee" aria-label="Cuisines on Dishify">
+      <div class="marquee-row" id="row1"></div>
+      <div class="marquee-row" id="row2"></div>
+    </section>
+
+    <!-- FEATURES -->
+    <section id="features">
+      <div class="section-head">
+        <div>
+          <p class="eyebrow">What Dishify does</p>
+          <h2 class="section-title">The menu, made physical.</h2>
+        </div>
+      </div>
+      <div id="feature-list"></div>
+    </section>
+
+    <!-- WHY -->
+    <section id="why">
+      <div class="why-inner">
+        <p class="eyebrow">Why choose us</p>
+        <h2 class="section-title">The smarter way to dine.</h2>
+        <div class="why-grid" id="why-grid"></div>
+      </div>
+    </section>
+
+    <!-- STATS -->
+    <section id="stats">
+      <div class="stats-strip">
+        <div class="stat"><div class="stat-val" id="live-restaurants">—</div><div class="stat-label">Restaurants live</div></div>
+        <div class="stat"><div class="stat-val">0</div><div class="stat-label">Apps to install</div></div>
+        <div class="stat"><div class="stat-val">1</div><div class="stat-label">QR scan to order</div></div>
+        <div class="stat"><div class="stat-val">3D</div><div class="stat-label">Real-scale AR preview</div></div>
+      </div>
+    </section>
+
+    <!-- DARK ZONE -->
+    <section id="service-zone">
+      <div class="zone-inner">
+        <p class="eyebrow">How it works</p>
+        <h2 class="section-title">Three taps to the table.</h2>
+
+        <div class="stack">
+          <div class="panel">
+            <article class="flow-card" style="--accent:#B8431C">
+              <div class="flow-top">
+                <div class="flow-id">
+                  <span class="flow-num">01</span>
+                  <div><span class="flow-cat">At the table</span><div class="flow-name">Scan the code</div></div>
+                </div>
+              </div>
+              <p class="flow-desc">A QR code on the table opens the AR menu straight in the browser — no app, no signup, no download.</p>
+              <div class="flow-preview" data-tag="Instant QR access"><div class="flow-icon-wrap"><svg class="icon-line" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8V5a1 1 0 0 1 1-1h3M20 8V5a1 1 0 0 0-1-1h-3M4 16v3a1 1 0 0 0 1 1h3M20 16v3a1 1 0 0 1-1 1h-3"/><rect x="7" y="7" width="3.2" height="3.2"/><rect x="13.8" y="7" width="3.2" height="3.2"/><rect x="7" y="13.8" width="3.2" height="3.2"/><rect x="13.8" y="13.8" width="3.2" height="3.2"/></svg></div></div>
+            </article>
+          </div>
+
+          <div class="panel">
+            <article class="flow-card" style="--accent:#5C6B4E">
+              <div class="flow-top">
+                <div class="flow-id">
+                  <span class="flow-num">02</span>
+                  <div><span class="flow-cat">Before ordering</span><div class="flow-name">Preview in AR</div></div>
+                </div>
+              </div>
+              <p class="flow-desc">Place any dish on the table at real scale, from every angle, before it's ever cooked.</p>
+              <a class="flow-try" data-ar-demo href="ar.html?model=assets%2Fburger.glb&amp;item=Classic%20Burger" target="_blank" rel="noopener">Try it now →</a>
+              <div class="flow-preview" data-tag="3D model, real scale"><div class="flow-icon-wrap"><svg class="icon-line" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 20 7.5v9L12 21 4 16.5v-9L12 3Z"/><path d="M12 12v9M12 12 20 7.5M12 12 4 7.5"/></svg></div></div>
+            </article>
+          </div>
+
+          <div class="panel">
+            <article class="flow-card" style="--accent:#7A5A2E">
+              <div class="flow-top">
+                <div class="flow-id">
+                  <span class="flow-num">03</span>
+                  <div><span class="flow-cat">In the kitchen</span><div class="flow-name">Order & track</div></div>
+                </div>
+              </div>
+              <p class="flow-desc">The order lands on the kitchen screen the instant it's sent, with live status back to the table.</p>
+              <div class="flow-preview" data-tag="Live kitchen sync"><div class="flow-icon-wrap"><svg class="icon-line" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12a8 8 0 0 1 14-5.3L20 8"/><path d="M20 4v4h-4"/><path d="M20 12a8 8 0 0 1-14 5.3L4 16"/><path d="M4 20v-4h4"/></svg></div></div>
+            </article>
+          </div>
+        </div>
+      </div>
+
+      <!-- RESTAURANTS (live, Firebase) -->
+      <div class="zone-inner" id="restaurants">
+        <p class="eyebrow">Participating venues</p>
+        <h2 class="section-title">Restaurants on Dishify.</h2>
+        <p style="font-family:var(--f-body);font-weight:400;font-size:.92rem;color:var(--bone-dim);margin-top:16px;max-width:520px;line-height:1.6">Visit any partner restaurant and scan the code at your table to open the full AR menu.</p>
+        <div class="restaurant-grid" id="restaurants-list">
+          <div style="background:var(--dark-2);border:1px solid var(--bone-line);border-radius:14px;overflow:hidden"><div class="skel" style="height:190px"></div><div style="padding:22px"><div class="skel" style="height:11px;width:60px;margin-bottom:12px"></div><div class="skel" style="height:20px;width:70%;margin-bottom:10px"></div><div class="skel" style="height:11px;width:90%"></div></div></div>
+          <div style="background:var(--dark-2);border:1px solid var(--bone-line);border-radius:14px;overflow:hidden"><div class="skel" style="height:190px"></div><div style="padding:22px"><div class="skel" style="height:11px;width:60px;margin-bottom:12px"></div><div class="skel" style="height:20px;width:70%;margin-bottom:10px"></div><div class="skel" style="height:11px;width:90%"></div></div></div>
+        </div>
+      </div>
+
+      <!-- CONTACT -->
+      <div class="zone-inner" id="contact">
+        <p class="eyebrow">Get in touch</p>
+        <h2 class="section-title">Bring Dishify to your restaurant.</h2>
+        <div class="contact-grid">
+          <div class="contact-info">
+            <div class="ci-item"><div class="ci-icon">@</div><div class="ci-text"><h4>Email us</h4><p>For general inquiries and support:<br><a href="mailto:engineerhaadi@outlook.com">engineerhaadi@outlook.com</a></p></div></div>
+            <div class="ci-item"><div class="ci-icon">#</div><div class="ci-text"><h4>Business & quotations</h4><p>Want Dishify at your restaurant? We offer custom packages with AR setup, menu management, and onboarding support.</p></div></div>
+            <div class="ci-item"><div class="ci-icon">+</div><div class="ci-text"><h4>Partnerships</h4><p>Chains, cloud kitchens, food halls — let's talk about scaling Dishify across your whole operation.</p></div></div>
+            <div class="ci-item"><div class="ci-icon">~</div><div class="ci-text"><h4>Response time</h4><p>We reply to all inquiries within 24 hours on business days.</p></div></div>
+          </div>
+          <div class="contact-form chit">
+            <div class="cf-heading">Send a message</div>
+            <div class="cf-row">
+              <div class="cf-group"><label class="cf-label">Your name</label><input class="cf-input" id="cf-name" type="text" placeholder="Ahmad Khan"></div>
+              <div class="cf-group"><label class="cf-label">Phone / WhatsApp</label><input class="cf-input" id="cf-phone" type="tel" placeholder="+92 300 0000000"></div>
+            </div>
+            <div class="cf-group"><label class="cf-label">Email address</label><input class="cf-input" id="cf-email" type="email" placeholder="you@restaurant.com"></div>
+            <div class="cf-group"><label class="cf-label">Inquiry type</label>
+              <select class="cf-select" id="cf-type">
+                <option value="">Select inquiry type…</option>
+                <option value="quotation">Request a quotation</option>
+                <option value="demo">Book a demo</option>
+                <option value="partnership">Partnership proposal</option>
+                <option value="support">Technical support</option>
+                <option value="general">General inquiry</option>
+              </select>
+            </div>
+            <div class="cf-group"><label class="cf-label">Message</label><textarea class="cf-textarea" id="cf-message" placeholder="Tell us about your restaurant, number of tables, any special requirements…"></textarea></div>
+            <button class="btn btn-primary cf-submit" id="cf-submit" onclick="submitContact()">Send message <span class="btn-arrow">→</span></button>
+            <div class="cf-success" id="cf-success">✓ Message sent — we'll be in touch within 24 hours.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- LOGIN ZONE -->
+      <div class="zone-inner" id="login-zone">
+        <p class="eyebrow">Partner access</p>
+        <h2 class="section-title">Restaurant & admin login.</h2>
+        <div class="login-cards">
+          <a class="login-card frame" href="owner.html">
+            <div class="login-icon"><svg class="icon-line" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v1a1 1 0 0 1-1 1h-4a1 1 0 0 1-1-1V4Z"/><path d="M8 12.5h8M8 16h5"/></svg></div>
+            <span class="login-card-tag">Restaurant login</span>
+            <div class="login-card-title">Track your orders</div>
+            <p class="login-card-desc">Track live orders, manage order status, and view your daily stats. Each restaurant gets its own secure access.</p>
+            <span class="btn btn-ghost on-dark">Go to orders <span class="btn-arrow">→</span></span>
+          </a>
+          <a class="login-card frame" href="admin.html">
+            <div class="login-icon"><svg class="icon-line" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.2"/><rect x="14" y="3" width="7" height="7" rx="1.2"/><rect x="3" y="14" width="7" height="7" rx="1.2"/><rect x="14" y="14" width="7" height="7" rx="1.2"/></svg></div>
+            <span class="login-card-tag">Admin dashboard</span>
+            <div class="login-card-title">Manage the platform</div>
+            <p class="login-card-desc">Add restaurants, manage menus, upload AR models, generate QR codes, and view platform-wide analytics.</p>
+            <span class="btn btn-ghost on-dark">Admin panel <span class="btn-arrow">→</span></span>
+          </a>
+        </div>
+      </div>
+
+      <footer>
+        <span class="foot-mark">Dishify © 2026 · <a href="mailto:engineerhaadi@outlook.com">engineerhaadi@outlook.com</a></span>
+        <span class="foot-mark">Built for the table, not the app store</span>
+        <span class="foot-mark">Demo model: <a href="https://sketchfab.com/3d-models/burger-realistic-free-18e59d7dbd2243c69f469e0f056f44c4" target="_blank" rel="noopener">"Burger Realistic (Free)"</a> by erebus3d, CC BY 4.0</span>
+      </footer>
+    </section>
+
+  </main>
+
+  <dialog id="ar-qr" class="qr-dialog" aria-labelledby="ar-qr-title">
+    <div class="qr-card">
+      <button type="button" class="qr-close" aria-label="Close">&times;</button>
+      <p class="eyebrow" style="justify-content:center">Live AR demo</p>
+      <h3 id="ar-qr-title">Scan to place it on your table</h3>
+      <div id="ar-qr-code"></div>
+      <p class="qr-note">Point your phone's camera at the code. No app needed.</p>
+      <a class="qr-open" id="ar-qr-link" href="ar.html" target="_blank" rel="noopener">Or open the viewer here →</a>
+    </div>
+  </dialog>
+
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+  <!-- burger model: hosted at assets/burger.glb. The points below are its surface, baked offline, so the hero has something to show before the file arrives. -->
+  <script>window.DISHIFY_BURGER_POINTS = {"n":3914,"span":1.25,"halfH":0.63128,"footprint":2.2,"data":"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"};</script>
+  
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <script>
+  (function(){
+    'use strict';
+    var reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    /* ---------------- Theme (light/dark) toggling for HUD + nav ---------------- */
+    // Checked against the nav's own position (not "% of section visible", which mis-fires on
+    // #service-zone once it's several screens tall — you can be deep inside it, still on a dark
+    // background, while its visible fraction has dropped under the old 20% threshold).
+    var darkSections = Array.prototype.slice.call(document.querySelectorAll('#hero, #service-zone'));
+    var NAV_Y = 40;
+    function updateNavTheme(){
+      var isDark = darkSections.some(function(s){
+        var r = s.getBoundingClientRect();
+        return r.top <= NAV_Y && r.bottom >= NAV_Y;
+      });
+      document.body.classList.toggle('theme-dark', isDark);
+    }
+    window.addEventListener('scroll', updateNavTheme, { passive: true });
+    window.addEventListener('resize', updateNavTheme);
+    updateNavTheme();
+
+    /* ---------------- Features (data-driven) ---------------- */
+    var ICON_SVGS = {"qr": "<svg class=\"icon-line\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M4 8V5a1 1 0 0 1 1-1h3M20 8V5a1 1 0 0 0-1-1h-3M4 16v3a1 1 0 0 0 1 1h3M20 16v3a1 1 0 0 1-1 1h-3\"/><rect x=\"7\" y=\"7\" width=\"3.2\" height=\"3.2\"/><rect x=\"13.8\" y=\"7\" width=\"3.2\" height=\"3.2\"/><rect x=\"7\" y=\"13.8\" width=\"3.2\" height=\"3.2\"/><rect x=\"13.8\" y=\"13.8\" width=\"3.2\" height=\"3.2\"/></svg>", "ar": "<svg class=\"icon-line\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M12 3 20 7.5v9L12 21 4 16.5v-9L12 3Z\"/><path d=\"M12 12v9M12 12 20 7.5M12 12 4 7.5\"/></svg>", "sync": "<svg class=\"icon-line\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M4 12a8 8 0 0 1 14-5.3L20 8\"/><path d=\"M20 4v4h-4\"/><path d=\"M20 12a8 8 0 0 1-14 5.3L4 16\"/><path d=\"M4 20v-4h4\"/></svg>", "table": "<svg class=\"icon-line\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M3 9h18M6 9v10M18 9v10\"/><path d=\"M9 14.3 11 16.3 15.5 11.3\"/></svg>", "palette": "<svg class=\"icon-line\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M12 3a9 9 0 1 0 0 18c1.4 0 2-.9 2-1.9 0-.6-.4-1.1-.4-1.8 0-1.2 1-2.1 2.2-2.1h1.7a3.3 3.3 0 0 0 3.3-3.3C20.8 6.8 16.9 3 12 3Z\"/><circle cx=\"7.7\" cy=\"10.8\" r=\"1\"/><circle cx=\"9.8\" cy=\"7.2\" r=\"1\"/><circle cx=\"14.4\" cy=\"7.2\" r=\"1\"/><circle cx=\"16.4\" cy=\"10.8\" r=\"1\"/></svg>", "clipboard": "<svg class=\"icon-line\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><rect x=\"5\" y=\"4\" width=\"14\" height=\"17\" rx=\"2\"/><path d=\"M9 4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v1a1 1 0 0 1-1 1h-4a1 1 0 0 1-1-1V4Z\"/><path d=\"M8 12.5h8M8 16h5\"/></svg>", "grid": "<svg class=\"icon-line\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><rect x=\"3\" y=\"3\" width=\"7\" height=\"7\" rx=\"1.2\"/><rect x=\"14\" y=\"3\" width=\"7\" height=\"7\" rx=\"1.2\"/><rect x=\"3\" y=\"14\" width=\"7\" height=\"7\" rx=\"1.2\"/><rect x=\"14\" y=\"14\" width=\"7\" height=\"7\" rx=\"1.2\"/></svg>"};
+    var features = [
+      { n:'01', name:'Augmented Reality', desc:'See every dish rendered in 3D before you order — place it right on your table at real scale.', icon:'ar' },
+      { n:'02', name:'Instant QR Menus', desc:'No app required. Scan, browse, and order in seconds from your seat.', icon:'qr' },
+      { n:'03', name:'Live Order Sync', desc:'Every order lands on the kitchen screen the moment it\u2019s sent, with real-time status back to the table.', icon:'sync' }
+    ];
+    var featList = document.getElementById('feature-list');
+    features.forEach(function(f){
+      var row = document.createElement('div');
+      row.className = 'feat-row';
+      row.innerHTML = '<div class="feat-icon">'+ICON_SVGS[f.icon]+'</div><div><div class="feat-name"><span class="feat-index">'+f.n+'</span>'+f.name+'</div><p class="feat-desc">'+f.desc+'</p></div>';
+      featList.appendChild(row);
+    });
+
+    /* ---------------- Why grid (data-driven) ---------------- */
+    var why = [
+      { n:'01', t:'No App Needed', d:'Guests simply scan a QR code at the table. No download, no signup — just a seamless experience from the first tap.', icon:'qr' },
+      { n:'02', t:'AR Food Preview', d:'Interactive 3D models let guests see dishes in real scale before ordering, reducing hesitation and boosting upsells.', icon:'ar' },
+      { n:'03', t:'Table-Linked Orders', d:'Each order carries the table it was placed from straight to the kitchen screen, so nothing gets lost in translation.', icon:'table' },
+      { n:'04', t:'Per-Restaurant Branding', d:'Each venue gets its own visual theme — colors, fonts, vibe — matching the restaurant\u2019s personality perfectly.', icon:'palette' }
+    ];
+    var whyGrid = document.getElementById('why-grid');
+    why.forEach(function(w){
+      var cell = document.createElement('div');
+      cell.className = 'why-cell frame';
+      cell.innerHTML = '<div class="why-icon">'+ICON_SVGS[w.icon]+'</div><span class="why-num">'+w.n+'</span><div class="why-title">'+w.t+'</div><p class="why-desc">'+w.d+'</p>';
+      whyGrid.appendChild(cell);
+    });
+
+    /* ---------------- Marquee (cuisine reel) ---------------- */
+    var reels = [
+      { name:'Italian', c1:'#B8431C', c2:'#2A2520' },
+      { name:'Pakistani', c1:'#5C6B4E', c2:'#20221D' },
+      { name:'Japanese', c1:'#7A5A2E', c2:'#221D16' },
+      { name:'American', c1:'#8A5C46', c2:'#211B16' },
+      { name:'Chinese', c1:'#4E6259', c2:'#1D2220' },
+      { name:'Mexican', c1:'#B8431C', c2:'#3F4A36' },
+      { name:'Turkish', c1:'#6B4E36', c2:'#1E1B16' },
+      { name:'Thai', c1:'#5C6B4E', c2:'#7A5A2E' }
+    ];
+    function buildRow(el, items){
+      var frag = document.createDocumentFragment();
+      for(var t=0; t<3; t++){
+        items.forEach(function(r){
+          var tile = document.createElement('div');
+          tile.className = 'reel-tile';
+          tile.style.background = 'linear-gradient(150deg,'+r.c1+','+r.c2+')';
+          tile.innerHTML = '<span class="reel-name">'+r.name+'</span>';
+          frag.appendChild(tile);
+        });
+      }
+      el.appendChild(frag);
+    }
+    var row1El = document.getElementById('row1');
+    var row2El = document.getElementById('row2');
+    buildRow(row1El, reels.slice(0,4));
+    buildRow(row2El, reels.slice(4,8));
+
+    var marqueeSection = document.getElementById('marquee');
+    var marqueeTop = 0;
+    function measureMarquee(){ marqueeTop = marqueeSection.offsetTop; }
+    measureMarquee();
+    window.addEventListener('resize', measureMarquee);
+
+    function onScrollMarquee(){
+      var offset = (window.scrollY - marqueeTop + window.innerHeight) * 0.3;
+      row1El.style.transform = 'translateX(' + (offset - 400) + 'px)';
+      row2El.style.transform = 'translateX(' + (-(offset - 400)) + 'px)';
+    }
+    window.addEventListener('scroll', onScrollMarquee, { passive: true });
+    onScrollMarquee();
+
+    /* ---------------- GSAP: how-it-works card stacking ---------------- */
+    if(window.gsap && window.ScrollTrigger){
+      gsap.registerPlugin(ScrollTrigger);
+      window.__flowProgress = window.__flowProgress || {};
+      var cards = gsap.utils.toArray('.flow-card');
+      cards.forEach(function(card, i){
+        if(i === cards.length - 1) return;
+        gsap.to(card, {
+          scale: 0.92,
+          y: -10,
+          ease: 'none',
+          scrollTrigger: {
+            trigger: card.closest('.panel'),
+            start: 'top top',
+            end: 'bottom top',
+            scrub: 0.6,
+            onUpdate: function(self){ window.__flowProgress[i] = self.progress; }
+          }
+        });
+      });
+    }
+
+    /* ---------------- Firebase: live restaurants + stats ---------------- */
+    if(!window.firebase){
+      console.warn('Dishify: Firebase SDK did not load — restaurant listings and the contact form are unavailable this session.');
+      var list0 = document.getElementById('restaurants-list');
+      if(list0){ list0.innerHTML = '<div class="empty-state">Restaurants are temporarily unavailable — please refresh the page.</div>'; }
+      window.submitContact = function(){
+        alert('Sorry, the contact form is temporarily unavailable. Please email us directly at engineerhaadi@outlook.com');
+      };
+      return;
+    }
+    var firebaseConfig = {
+      apiKey: "AIzaSyBvfA2VXcrx69iS-3VaCR9lA6mGyn6OicI",
+      authDomain: "dishify-menu.firebaseapp.com",
+      databaseURL: "https://dishify-menu-default-rtdb.firebaseio.com",
+      projectId: "dishify-menu",
+      storageBucket: "dishify-menu.firebasestorage.app",
+      messagingSenderId: "182873179650",
+      appId: "1:182873179650:web:8ff8cf3c04789d9f7b091b"
+    };
+    firebase.initializeApp(firebaseConfig);
+
+    var cuisineImages = {
+      'Italian':'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=600&q=80',
+      'Pakistani':'https://images.unsplash.com/photo-1631515243349-e0cb75fb8d3a?w=600&q=80',
+      'Japanese':'https://images.unsplash.com/photo-1617196034183-421b4040ed20?w=600&q=80',
+      'American':'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=600&q=80',
+      'Chinese':'https://images.unsplash.com/photo-1563245372-f21724e3856d?w=600&q=80',
+      'Mexican':'https://images.unsplash.com/photo-1565299585323-38d6b0865b47?w=600&q=80',
+      'Turkish':'https://images.unsplash.com/photo-1608158374781-4541f87ee36a?w=600&q=80',
+      'Thai':'https://images.unsplash.com/photo-1562565652-a0d8f0c59eb4?w=600&q=80',
+      'default':'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=600&q=80'
+    };
+
+    // The landing page only ever reads /public_restaurants — a lean mirror admin.html keeps in
+    // sync (name/cuisine/description/photo/vibe/demo). It never sees owner emails, uids, or menus,
+    // so there's nothing sensitive here even though this listener has no auth on it.
+    firebase.database().ref('public_restaurants').on('value', function(snap){
+      var data = snap.val() || {};
+      var keys = Object.keys(data);
+      document.getElementById('live-restaurants').textContent = keys.length || '0';
+
+      var list = document.getElementById('restaurants-list');
+      if(!keys.length){
+        list.innerHTML = '<div class="empty-state">Coming soon — restaurants are being onboarded. Check back soon.</div>';
+        return;
+      }
+      list.innerHTML = keys.map(function(key){
+        var r = data[key];
+        var img = r.photo || (r.cuisine && cuisineImages[r.cuisine]) || cuisineImages['default'];
+        // Only the featured demo venue is clickable — every other card is real, live restaurant
+        // data, and clicking through would drop a curious visitor straight into that kitchen's
+        // real order queue.
+        var openTag = r.demo ? '<a class="restaurant-card frame" href="menu.html?r='+encodeURIComponent(key)+'" target="_blank" rel="noopener">' : '<div class="restaurant-card frame">';
+        var closeTag = r.demo ? '</a>' : '</div>';
+        var badge = r.demo ? '<div class="card-scan-badge">Tap to open the live demo menu →</div>' : '<div class="card-scan-badge">Scan QR at your table to order</div>';
+        return openTag +
+          '<div class="card-img"><img src="'+img+'" alt="'+r.name+'" loading="lazy" onerror="this.src=\'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=600&q=80\'"></div>' +
+          '<div class="card-body">' +
+            '<span class="card-tag">'+(r.cuisine || 'Fine dining')+'</span>' +
+            '<h3 class="card-name">'+r.name+'</h3>' +
+            '<p class="card-desc">'+(r.description || 'Exceptional cuisine crafted with passion.')+'</p>' +
+            badge +
+          '</div>' +
+        closeTag;
+      }).join('');
+    });
+
+    window.submitContact = function(){
+      var name = document.getElementById('cf-name').value.trim();
+      var email = document.getElementById('cf-email').value.trim();
+      var msg = document.getElementById('cf-message').value.trim();
+      if(!name || !email || !msg){ alert('Please fill in Name, Email and Message.'); return; }
+      var btn = document.getElementById('cf-submit');
+      btn.disabled = true; btn.innerHTML = 'Sending…';
+      firebase.database().ref('inquiries').push({
+        name: name,
+        phone: document.getElementById('cf-phone').value.trim(),
+        email: email,
+        type: document.getElementById('cf-type').value,
+        message: msg,
+        timestamp: Date.now(),
+        timestampStr: new Date().toLocaleString('en-PK', { timeZone: 'Asia/Karachi' })
+      }).then(function(){
+        document.getElementById('cf-success').style.display = 'block';
+        btn.innerHTML = 'Sent ✓';
+        ['cf-name','cf-phone','cf-email','cf-message'].forEach(function(id){ document.getElementById(id).value = ''; });
+        document.getElementById('cf-type').value = '';
+      }).catch(function(){
+        btn.disabled = false; btn.innerHTML = 'Send message <span class="btn-arrow">→</span>';
+        alert('Failed to send. Email us directly at engineerhaadi@outlook.com');
+      });
+    };
+  })();
+  </script>
+
+  <!-- ================= HERO: plate + burger (three.js) ================= -->
+  <script>
+  /* =====================================================================
+     HERO — plate + burger.
+
+     The dish "compiles" on load: a point cloud sampled from the burger's own surface
+     spirals in and locks onto its silhouette, then the solid model resolves bottom-up
+     (a clip-shader dissolve) and the cloud fades out. Everything is time-based, so it
+     runs at the same speed on 60/120/144 Hz screens, and the loop sleeps whenever the
+     hero is off-screen or the tab is hidden.
+
+     Every number you're likely to want to tweak lives in CFG.
+     ===================================================================== */
+  (function(){
+    'use strict';
+
+    var canvas = document.getElementById('hero-canvas');
+    var heroSection = document.getElementById('hero');
+    if(!canvas || !heroSection) return;
+    if(!window.THREE){ canvas.style.display = 'none'; return; }
+    var reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    var CFG = {
+      modelUrl: 'assets/burger.glb',
+      dishDiameter: 2.2,          // burger footprint in scene units (the baked points were sampled at this size)
+      plateRadius: 1.65,
+      plateTop: 0.004,            // height of the plate's well; the burger sits on it
+      exposure: 1.0,              // tone-mapping exposure
+      envIntensity: 0.7,          // studio reflections on burger + plate
+      rimLight: 1.5,              // the single warm accent light
+      // scan points
+      pointSize: 0.042, pointOpacity: 0.6, pointColor: 0xEDEAE1,
+      scatterMin: 1.35, scatterMax: 2.0,   // radius of the starting halo around the dish
+      // timeline (seconds from first frame)
+      convergeStart: 0.15, convergeDur: 1.35, convergeStagger: 0.35, swirlTurns: 0.5,
+      settleStart: 0.9, settleDur: 1.2, settleDrop: 0.35,
+      revealStart: 1.2, revealDur: 0.9, pointsFadeDur: 0.5,
+      // idle motion, per second
+      idleSpin: 0.27, sway: 0.119, bobAmp: 0.03, bobSpeed: 1.08,
+      maxPixelRatio: 2
+    };
+
+    function clamp(x, a, b){ return x < a ? a : (x > b ? b : x); }
+    function smooth(x){ x = clamp(x, 0, 1); return x * x * (3 - 2 * x); }
+    function easeOutCubic(x){ return 1 - Math.pow(1 - x, 3); }
+    function easeInOutCubic(x){ return x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2; }
+
+    /* ---------- renderer ---------- */
+    var renderer;
+    try{
+      renderer = new THREE.WebGLRenderer({ canvas: canvas, alpha: true, antialias: true, powerPreference: 'high-performance' });
+    }catch(err){ canvas.style.display = 'none'; return; }
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, CFG.maxPixelRatio));
+    renderer.setClearColor(0x000000, 0);
+    renderer.outputEncoding = THREE.sRGBEncoding;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = CFG.exposure;
+
+    var contextLost = false;
+    var heroVisible = true, running = false, lastTs = 0;             // loop state (declared early: resize() can call wake())
+    var baseRotY = 0, dishSpin = 0, smoothScroll = 0, lastOpacity = 1;
+    canvas.addEventListener('webglcontextlost', function(e){ e.preventDefault(); contextLost = true; }, false);
+    canvas.addEventListener('webglcontextrestored', function(){ window.location.reload(); }, false);
+
+    var scene = new THREE.Scene();
+    var camera = new THREE.PerspectiveCamera(42, 1, 0.1, 100);
+    camera.position.set(0, 1.15, 7.6);
+    camera.lookAt(0, 0, 0);
+
+    var stage = new THREE.Group();   // positioned + scaled into the gap between headline and CTAs (layoutStage)
+    scene.add(stage);
+    var group = new THREE.Group();   // idle sway, mouse tilt, scroll turn
+    stage.add(group);
+
+    /* ---------- lighting: a small procedural studio, plus one warm accent ---------- */
+    var envTexture = null;
+    try{
+      var envScene = new THREE.Scene();
+      envScene.add(new THREE.Mesh(new THREE.SphereGeometry(20, 24, 12), new THREE.MeshBasicMaterial({ color: 0x1b1712, side: THREE.BackSide })));
+      var panel = function(w, h, x, y, z, hex, k){
+        var m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ color: new THREE.Color(hex).multiplyScalar(k), side: THREE.DoubleSide }));
+        m.position.set(x, y, z);
+        m.lookAt(0, 0, 0);
+        envScene.add(m);
+      };
+      panel(9, 6, 6, 9, 7, 0xfff3e2, 7);        // soft key: above, front-right, warm white
+      panel(4, 9, -10, 3, 2, 0xdfe6f2, 1.6);    // cool strip from the left
+      panel(12, 3, 0, -4, 9, 0xffe0c2, 1.1);    // low warm bounce from the front
+      var pmrem = new THREE.PMREMGenerator(renderer);
+      envTexture = pmrem.fromScene(envScene, 0.03).texture;
+      pmrem.dispose();
+      scene.environment = envTexture;
+    }catch(err){ envTexture = null; }
+
+    scene.add(new THREE.HemisphereLight(0xEDEAE1, 0x171512, envTexture ? 0.3 : 0.85));
+    var rim = new THREE.PointLight(0xCC5A30, envTexture ? CFG.rimLight : 2.6, 14);
+    rim.position.set(-3, 2, 3);
+    scene.add(rim);
+    var fill = new THREE.DirectionalLight(0xffffff, envTexture ? 0.35 : 0.5);
+    fill.position.set(2, 3, 4);
+    scene.add(fill);
+
+    /* ---------- plate: a lathe profile with a shallow well and a rolled rim ---------- */
+    var R = CFG.plateRadius;
+    var plateProfile = [
+      [0.00, 0.000], [0.75, 0.000], [1.02, 0.010], [1.24, 0.034], [1.42, 0.066], [1.53, 0.086],
+      [R - 0.05, 0.096], [R, 0.088], [R + 0.012, 0.072], [R + 0.004, 0.056],
+      [1.52, 0.034], [1.34, 0.006], [1.10, -0.018], [0.90, -0.036], [0.80, -0.044],
+      [0.66, -0.044], [0.00, -0.036]
+    ].map(function(p){ return new THREE.Vector2(p[0], p[1]); });
+    var plate = new THREE.Mesh(
+      new THREE.LatheGeometry(plateProfile, 96),
+      new THREE.MeshStandardMaterial({ color: 0xF2EEE2, metalness: 0.0, roughness: 0.28, side: THREE.DoubleSide, envMapIntensity: CFG.envIntensity })
+    );
+    group.add(plate);
+
+    /* ---------- floor: a soft light pool with a contact shadow, drawn in the scene so it stays attached to the plate ---------- */
+    (function(){
+      var c = document.createElement('canvas');
+      c.width = c.height = 128;
+      var g = c.getContext('2d');
+      var pool = g.createRadialGradient(64, 64, 0, 64, 64, 64);
+      pool.addColorStop(0, 'rgba(237,234,225,0.10)');
+      pool.addColorStop(0.55, 'rgba(237,234,225,0.05)');
+      pool.addColorStop(1, 'rgba(237,234,225,0)');
+      g.fillStyle = pool; g.fillRect(0, 0, 128, 128);
+      var shade = g.createRadialGradient(64, 64, 0, 64, 64, 64);
+      shade.addColorStop(0, 'rgba(0,0,0,0.65)');
+      shade.addColorStop(0.62, 'rgba(0,0,0,0.55)');
+      shade.addColorStop(0.8, 'rgba(0,0,0,0.26)');
+      shade.addColorStop(1, 'rgba(0,0,0,0)');
+      g.fillStyle = shade; g.fillRect(0, 0, 128, 128);
+      var tex = new THREE.CanvasTexture(c);
+      tex.encoding = THREE.sRGBEncoding;
+      var floor = new THREE.Mesh(
+        new THREE.PlaneGeometry(R * 2.9, R * 2.9),
+        new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false, toneMapped: false })
+      );
+      floor.rotation.x = -Math.PI / 2;
+      floor.position.y = -0.046;
+      group.add(floor);
+    })();
+
+    /* ---------- dish pivot: burger model + scan points share this frame (origin = centre of the burger) ---------- */
+    var P = window.DISHIFY_BURGER_POINTS || null;
+    var halfH = P ? P.halfH : 0.63;
+    var restY = CFG.plateTop + halfH;
+    var dish = new THREE.Group();
+    dish.position.y = restY + CFG.settleDrop;
+    group.add(dish);
+
+    /* ---------- scan points (positions baked offline from the burger's surface) ---------- */
+    var pointCloud = null, pointMat = null, pointGeo = null;
+    var pCount = 0, pTarget = null, pStart = null, pDelay = null, pSwirl = null, pSeed = null, pPos = null;
+    var pointsSettled = false;
+    var tConvergeEnd = CFG.convergeStart + CFG.convergeStagger + CFG.convergeDur;
+
+    if(P && P.data){
+      try{
+        var bin = atob(P.data), u8 = new Uint8Array(bin.length);
+        for(var bi = 0; bi < bin.length; bi++) u8[bi] = bin.charCodeAt(bi);
+        var q = new Int16Array(u8.buffer);
+        pCount = P.n;
+        pTarget = new Float32Array(pCount * 3);
+        pStart = new Float32Array(pCount * 3);
+        pPos = new Float32Array(pCount * 3);
+        pDelay = new Float32Array(pCount);
+        pSwirl = new Float32Array(pCount);
+        pSeed = new Float32Array(pCount);
+        for(var i = 0; i < pCount; i++){
+          var ix = i * 3;
+          pTarget[ix] = q[ix] / 32767 * P.span;
+          pTarget[ix + 1] = q[ix + 1] / 32767 * P.span;
+          pTarget[ix + 2] = q[ix + 2] / 32767 * P.span;
+          // scattered start: a loose shell around the dish
+          var r = CFG.scatterMin + Math.random() * (CFG.scatterMax - CFG.scatterMin), th = Math.random() * Math.PI * 2, ph = Math.acos(2 * Math.random() - 1);
+          pStart[ix] = r * Math.sin(ph) * Math.cos(th);
+          pStart[ix + 1] = r * Math.sin(ph) * Math.sin(th) * 0.6 + 0.3;   // flattened, so the halo stays clear of the headline and the CTAs
+          pStart[ix + 2] = r * Math.cos(ph);
+          pDelay[i] = Math.random() * CFG.convergeStagger;
+          pSeed[i] = Math.random() * Math.PI * 2;
+          // points near the burger's axis wind in a little faster than the ones out at the edge, so the cloud bends into spiral arms
+          var horiz = Math.sqrt(pStart[ix] * pStart[ix] + pStart[ix + 2] * pStart[ix + 2]);
+          pSwirl[i] = 1 - 0.4 * Math.min(horiz / CFG.scatterMax, 1);
+        }
+        pPos.set(pStart);
+
+        var dotCanvas = document.createElement('canvas');
+        dotCanvas.width = dotCanvas.height = 32;
+        var dg = dotCanvas.getContext('2d');
+        dg.fillStyle = '#fff';
+        dg.beginPath(); dg.arc(16, 16, 13, 0, Math.PI * 2); dg.fill();
+
+        pointGeo = new THREE.BufferGeometry();
+        pointGeo.setAttribute('position', new THREE.BufferAttribute(pPos, 3));
+        pointMat = new THREE.PointsMaterial({
+          color: CFG.pointColor, size: CFG.pointSize, sizeAttenuation: true, map: new THREE.CanvasTexture(dotCanvas),
+          transparent: true, opacity: 0, depthWrite: false, toneMapped: false
+        });
+        pointCloud = new THREE.Points(pointGeo, pointMat);
+        pointCloud.frustumCulled = false;   // positions are rewritten every frame; a stale bounding sphere must not cull them
+        dish.add(pointCloud);
+      }catch(err){ pointCloud = null; }
+    }
+
+    function updatePoints(t){
+      var A = CFG.swirlTurns * Math.PI * 2;
+      for(var i = 0; i < pCount; i++){
+        var p = clamp((t - CFG.convergeStart - pDelay[i]) / CFG.convergeDur, 0, 1);
+        var rem = 1 - easeInOutCubic(p);
+        var ix = i * 3;
+        var x = pTarget[ix] + (pStart[ix] - pTarget[ix]) * rem;
+        var y = pTarget[ix + 1] + (pStart[ix + 1] - pTarget[ix + 1]) * rem;
+        var z = pTarget[ix + 2] + (pStart[ix + 2] - pTarget[ix + 2]) * rem;
+        var a = A * rem * pSwirl[i], c = Math.cos(a), s = Math.sin(a), d = rem * 0.03, sd = pSeed[i];
+        pPos[ix] = x * c + z * s + Math.sin(t * 1.3 + sd) * d;
+        pPos[ix + 1] = y + Math.sin(t * 1.6 + sd * 1.3) * d;
+        pPos[ix + 2] = -x * s + z * c + Math.sin(t * 1.1 + sd * 0.7) * d;
+      }
+      pointGeo.attributes.position.needsUpdate = true;
+    }
+
+    /* ---------- the solid burger: hosted GLB, dissolved in bottom-up by a clip shader (no transparency, so no sorting artefacts) ---------- */
+    var revealU = { value: 0 }, yMinU = { value: 0 }, yRangeU = { value: 1 };
+    var REVEAL_GLSL = [
+      'uniform float uReveal; uniform float uYMin; uniform float uYRange; varying vec3 vDishPos;',
+      'float dHash(vec3 p){ p = fract(p * 0.3183099 + vec3(0.71, 0.113, 0.419)); p *= 17.0; return fract(p.x * p.y * p.z * (p.x + p.y + p.z)); }',
+      'float dNoise(vec3 x){ vec3 i = floor(x); vec3 f = fract(x); f = f * f * (3.0 - 2.0 * f);',
+      '  return mix(mix(mix(dHash(i), dHash(i + vec3(1.,0.,0.)), f.x), mix(dHash(i + vec3(0.,1.,0.)), dHash(i + vec3(1.,1.,0.)), f.x), f.y),',
+      '             mix(mix(dHash(i + vec3(0.,0.,1.)), dHash(i + vec3(1.,0.,1.)), f.x), mix(dHash(i + vec3(0.,1.,1.)), dHash(i + vec3(1.,1.,1.)), f.x), f.y), f.z); }'
+    ].join('\n');
+    var REVEAL_CLIP = [
+      'if (uReveal < 1.0) {',
+      '  float dh = clamp((vDishPos.y - uYMin) / uYRange, 0.0, 1.0);',
+      '  float dn = dNoise(vDishPos / uYRange * 5.0);',
+      '  if (dh * 0.72 + dn * 0.28 > uReveal) discard;',
+      '}'
+    ].join('\n');
+    function makeRevealable(mat){
+      mat.onBeforeCompile = function(shader){
+        shader.uniforms.uReveal = revealU;
+        shader.uniforms.uYMin = yMinU;
+        shader.uniforms.uYRange = yRangeU;
+        shader.vertexShader = shader.vertexShader
+          .replace('#include <common>', '#include <common>\nvarying vec3 vDishPos;')
+          .replace('#include <begin_vertex>', '#include <begin_vertex>\nvDishPos = position;');
+        shader.fragmentShader = shader.fragmentShader
+          .replace('#include <common>', '#include <common>\n' + REVEAL_GLSL)
+          .replace('#include <clipping_planes_fragment>', '#include <clipping_planes_fragment>\n' + REVEAL_CLIP);
+      };
+      mat.needsUpdate = true;
+    }
+
+    var introT = reduceMotion ? 99 : 0;   // seconds on the intro clock (advances only while the hero is being drawn)
+    var idleT = 0;
+    var modelReady = false, modelReadyAt = 0, revealDone = false, tRevealDone = 0;
+
+    function onModel(gltf){
+      var model = gltf.scene;
+      var box = new THREE.Box3().setFromObject(model);
+      var size = box.getSize(new THREE.Vector3());
+      var center = box.getCenter(new THREE.Vector3());
+      var footprint = Math.max(size.x, size.z) || 1;
+      yMinU.value = box.min.y;
+      yRangeU.value = Math.max(size.y, 1e-6);
+      model.position.set(-center.x, -center.y, -center.z);
+      var inner = new THREE.Group();
+      inner.scale.setScalar(CFG.dishDiameter / footprint);   // width is capped, so the burger can never overhang the rim
+      inner.add(model);
+      model.traverse(function(node){
+        if(!node.isMesh || !node.material) return;
+        (Array.isArray(node.material) ? node.material : [node.material]).forEach(function(m){
+          m.envMapIntensity = CFG.envIntensity;
+          makeRevealable(m);
+        });
+      });
+      dish.add(inner);
+      modelReady = true;
+      modelReadyAt = introT;
+      wake();
+    }
+    // If the model can't be fetched (offline, or the page was opened from disk), the scan points stay up as a silent fallback.
+    if(THREE.GLTFLoader){
+      new THREE.GLTFLoader().load(CFG.modelUrl, onModel, undefined, function(err){
+        console.warn('Dishify: could not load ' + CFG.modelUrl, err);
+      });
+    }
+
+    /* ---------- placement: sit the burger in the gap between the headline and the CTAs ---------- */
+    var headingEl = heroSection.querySelector('.hero-heading');
+    var bottomEl = heroSection.querySelector('.hero-bottom');
+    var STAGE = { refY: 0.48, width: 3.5, height: 1.7 };   // where the object's visual centre is, and how big it is, in stage units
+    var refPoint = new THREE.Vector3();
+    var heroH = heroSection.offsetHeight;
+
+    function layoutStage(){
+      var W = heroSection.clientWidth, H = heroSection.clientHeight;
+      if(!W || !H) return;
+      var hr = heroSection.getBoundingClientRect();
+      var top = headingEl ? headingEl.getBoundingClientRect().bottom - hr.top : H * 0.3;
+      var bottom = bottomEl ? bottomEl.getBoundingClientRect().top - hr.top : H * 0.8;
+      var gap = Math.max(bottom - top, 0);
+      var mid = top + gap / 2;
+      var wpp = 2 * camera.position.length() * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)) / H;   // scene units per screen pixel at the dish
+      var fit = Math.min(1, gap * wpp * 0.92 / STAGE.height, W * wpp * 0.94 / STAGE.width);
+      stage.scale.setScalar(Math.max(fit, 0.35));
+      stage.position.set(0, 0, 0);
+      camera.updateMatrixWorld(true);
+      stage.updateMatrixWorld(true);
+      for(var k = 0; k < 3; k++){
+        refPoint.set(0, STAGE.refY, 0);
+        stage.localToWorld(refPoint);
+        refPoint.project(camera);
+        var curPx = (1 - refPoint.y) * 0.5 * H;
+        stage.position.y += (curPx - mid) * wpp;     // screen y grows downward, so a positive error means "move up"
+        stage.updateMatrixWorld(true);
+      }
+      heroSection.style.setProperty('--stage-y', mid + 'px');
+    }
+
+    function resize(){
+      var w = heroSection.clientWidth, h = heroSection.clientHeight;
+      if(!w || !h) return;
+      renderer.setSize(w, h, false);
+      camera.aspect = w / h;
+      camera.updateProjectionMatrix();
+      heroH = heroSection.offsetHeight;
+      layoutStage();
+      wake();
+    }
+    var resizePending = false;
+    function scheduleResize(){
+      if(resizePending) return;
+      resizePending = true;
+      requestAnimationFrame(function(){ resizePending = false; resize(); });
+    }
+    window.addEventListener('resize', scheduleResize);
+    if('ResizeObserver' in window){
+      var ro = new ResizeObserver(scheduleResize);
+      ro.observe(heroSection);
+      if(headingEl) ro.observe(headingEl);
+      if(bottomEl) ro.observe(bottomEl);
+    }
+    if(document.fonts && document.fonts.ready) document.fonts.ready.then(scheduleResize);
+    resize();
+
+    /* ---------- input ---------- */
+    var mouseX = 0, mouseY = 0, curX = 0, curY = 0;
+    window.addEventListener('mousemove', function(e){
+      mouseX = (e.clientX / window.innerWidth) * 2 - 1;
+      mouseY = (e.clientY / window.innerHeight) * 2 - 1;
+    }, { passive: true });
+
+    /* ---------- loop: sleeps when the hero is off-screen or the tab is hidden ---------- */
+    function wake(){
+      if(running || contextLost) return;
+      running = true;
+      lastTs = performance.now();
+      requestAnimationFrame(tick);
+    }
+    if('IntersectionObserver' in window){
+      new IntersectionObserver(function(entries){
+        heroVisible = entries[0].isIntersecting;
+        if(heroVisible) wake();
+      }, { threshold: 0 }).observe(heroSection);
+    }
+    document.addEventListener('visibilitychange', function(){ if(!document.hidden) wake(); });
+
+    function tick(now){
+      if(contextLost || !heroVisible || document.hidden){ running = false; return; }
+      requestAnimationFrame(tick);
+      var dt = Math.min((now - lastTs) / 1000, 0.05);
+      lastTs = now;
+      if(!reduceMotion){
+        introT += dt;
+        idleT += dt;
+        baseRotY += CFG.sway * dt;
+        dishSpin += CFG.idleSpin * dt;
+      }
+      var t = introT;
+
+      var kMouse = 1 - Math.pow(0.95, dt * 60);
+      curX += (mouseY - curX) * kMouse;
+      curY += (mouseX - curY) * kMouse;
+      var rawScroll = clamp(window.scrollY / heroH, 0, 1);
+      smoothScroll += (rawScroll - smoothScroll) * (reduceMotion ? 1 : 1 - Math.pow(0.91, dt * 60));
+
+      // dish: settles onto the plate, then breathes
+      var sp = clamp((t - CFG.settleStart) / CFG.settleDur, 0, 1);
+      dish.position.y = restY + CFG.settleDrop * (1 - easeOutCubic(sp)) + (reduceMotion ? 0 : Math.sin(idleT * CFG.bobSpeed) * CFG.bobAmp * sp);
+      dish.rotation.y = dishSpin;
+
+      // solid burger resolves once the cloud has locked on (or as soon as the file arrives, if that's later)
+      if(modelReady && !revealDone){
+        if(reduceMotion){
+          revealU.value = 1.02; revealDone = true; tRevealDone = t;
+        } else {
+          var rs = Math.max(CFG.revealStart, modelReadyAt);
+          var rp = clamp((t - rs) / CFG.revealDur, 0, 1);
+          revealU.value = rp >= 1 ? 1.02 : smooth(rp);
+          if(rp >= 1){ revealDone = true; tRevealDone = t; }
+        }
+      }
+
+      // scan points
+      if(pointCloud && pointCloud.visible){
+        if(!pointsSettled){
+          updatePoints(t);
+          if(t >= tConvergeEnd) pointsSettled = true;
+        }
+        var alpha = smooth(t / 0.3);
+        if(revealDone){
+          var fo = reduceMotion ? 1 : clamp((t - tRevealDone) / CFG.pointsFadeDur, 0, 1);   // the intro clock is frozen under reduced motion, so don't wait on it
+          alpha *= 1 - fo;
+          if(fo >= 1) pointCloud.visible = false;
+        }
+        pointMat.opacity = CFG.pointOpacity * alpha;
+      }
+
+      group.rotation.y = baseRotY + curY * 0.35 + smoothScroll * 1.6;
+      group.rotation.x = curX * 0.16;
+      group.scale.setScalar(1 - smoothScroll * 0.32);
+      var op = 1 - smoothScroll * 0.9;
+      if(Math.abs(op - lastOpacity) > 0.002){ canvas.style.opacity = op; lastOpacity = op; }
+      rim.position.x = -3 + curY * 2;
+
+      renderer.render(scene, camera);
+    }
+    wake();
+  })();
+  </script>
+
+  <!-- ================= INTEGRATION LAYER: scroll reveals + AR demo links ================= -->
+  <script>
+  (function(){
+    'use strict';
+
+    /* ---------------- AR demo links: real URL everywhere, QR hand-off on desktop ---------------- */
+    (function(){
+      var DEMO_MODEL = 'assets/burger.glb', DEMO_ITEM = 'Classic Burger';
+      var url = 'ar.html';
+      try{
+        url = new URL('ar.html?model=' + encodeURIComponent(new URL(DEMO_MODEL, location.href).href) + '&item=' + encodeURIComponent(DEMO_ITEM), location.href).href;
+      }catch(e){}
+      var links = document.querySelectorAll('[data-ar-demo]');
+      links.forEach(function(a){ a.setAttribute('href', url); });
+
+      var demoBtn = document.getElementById('hero-demo');
+      if(demoBtn) demoBtn.addEventListener('click', function(){
+        var type = document.getElementById('cf-type');
+        if(type) type.value = 'demo';
+      });
+
+      // phones and tablets just follow the link; desktop gets a QR to scan with a phone
+      var handheld = window.matchMedia('(hover:none) and (pointer:coarse)').matches;
+      var dialog = document.getElementById('ar-qr');
+      if(handheld || !dialog || typeof dialog.showModal !== 'function') return;
+      var box = document.getElementById('ar-qr-code');
+      var open = document.getElementById('ar-qr-link');
+      var built = false;
+      open.setAttribute('href', url);
+      function show(){
+        if(!built){
+          built = true;
+          if(/^https?:$/.test(location.protocol) && window.QRCode){
+            new QRCode(box, { text: url, width: 184, height: 184, colorDark: '#171512', colorLight: '#EDEAE1', correctLevel: QRCode.CorrectLevel.M });
+          } else {
+            box.textContent = 'The QR needs this page to be served over http(s).';
+          }
+        }
+        dialog.showModal();
+      }
+      links.forEach(function(a){ a.addEventListener('click', function(e){ e.preventDefault(); show(); }); });
+      dialog.querySelector('.qr-close').addEventListener('click', function(){ dialog.close(); });
+      dialog.addEventListener('click', function(e){ if(e.target === dialog) dialog.close(); });   // clicks on the backdrop land on the dialog itself
+    })();
+
+    if(window.gsap && window.ScrollTrigger){
+      var targets = document.querySelectorAll('.feat-row, .why-cell, .stat, .login-card, .contact-info, .contact-form.chit, .section-title, .zone-inner > p.eyebrow');
+      targets.forEach(function(el){
+        gsap.from(el, {
+          opacity: 0, y: 24, duration: 0.85, ease: 'power2.out',
+          scrollTrigger: { trigger: el, start: 'top 90%' }
+        });
+      });
+
+      var list = document.getElementById('restaurants-list');
+      if(list && 'MutationObserver' in window){
+        var seen = new WeakSet();
+        var mo = new MutationObserver(function(){
+          list.querySelectorAll('.restaurant-card').forEach(function(card){
+            if(seen.has(card)) return;
+            seen.add(card);
+            gsap.from(card, { opacity: 0, y: 20, duration: 0.7, ease: 'power2.out' });
+          });
+        });
+        mo.observe(list, { childList: true });
+      }
+    }
+
+    // Corner-bracket frames brighten in permanently once scrolled into view (parity for touch devices, which have no hover)
+    if('IntersectionObserver' in window){
+      var frameObserver = new IntersectionObserver(function(entries){
+        entries.forEach(function(e){
+          if(e.isIntersecting){ e.target.classList.add('in-view'); frameObserver.unobserve(e.target); }
+        });
+      }, { threshold: 0.2 });
+      var watchFrames = function(){ document.querySelectorAll('.frame:not(.in-view)').forEach(function(el){ frameObserver.observe(el); }); };
+      watchFrames();
+      var list2 = document.getElementById('restaurants-list');
+      if(list2 && 'MutationObserver' in window){ new MutationObserver(watchFrames).observe(list2, { childList: true }); }
+    }
+  })();
+  </script>
+
+</body>
+</html>
